@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
@@ -104,7 +105,7 @@ public partial class ScreenshotApp : Application
     private static async Task SaveEditor(CaptureFile capture, AnnotationKind tool, string output, string file, bool desktop)
     {
         var editor = new EditorWindow(capture, Images.Read(capture.OriginalPath), CaptureStore.LoadEdits(capture));
-        ShowForScreenshot(editor);
+        ShowForScreenshot(editor, desktop);
         ((RadioButton)editor.FindName($"{tool}Tool")).IsChecked = true;
         SaveView(editor, output, file);
         if (desktop)
@@ -114,7 +115,6 @@ public partial class ScreenshotApp : Application
             editor.Height = Math.Min(editor.Height, Math.Floor(workArea.Height * 0.84));
             editor.Left = workArea.Left + (workArea.Width - editor.Width) / 2;
             editor.Top = workArea.Top + (workArea.Height - editor.Height) / 2;
-            editor.ShowInTaskbar = true;
             editor.Activate();
             await SaveDesktop(editor, output, "desktop-editor.png");
         }
@@ -161,8 +161,13 @@ public partial class ScreenshotApp : Application
             bounds.Top + (bounds.Bottom - bounds.Top) / 2);
         const uint rootWindow = 2;
         var screenPoint = new NativeMethods.NativePoint { X = center.X, Y = center.Y };
-        if (GetAncestor(WindowFromPoint(screenPoint), rootWindow) != handle)
-            throw new InvalidOperationException($"The {name} is covered by another window.");
+        var topWindow = GetAncestor(WindowFromPoint(screenPoint), rootWindow);
+        if (topWindow != handle)
+        {
+            var windowClass = new StringBuilder(256);
+            NativeMethods.GetClassName(topWindow, windowClass, windowClass.Capacity);
+            throw new InvalidOperationException($"The {name} is covered by another window ({windowClass}).");
+        }
         return center;
     }
 
@@ -235,10 +240,10 @@ public partial class ScreenshotApp : Application
         drawing.DrawText(formatted, new Point(62, y));
     }
 
-    private static void ShowForScreenshot(Window window)
+    private static void ShowForScreenshot(Window window, bool activate = false)
     {
-        window.ShowActivated = false;
-        window.ShowInTaskbar = false;
+        window.ShowActivated = activate;
+        window.ShowInTaskbar = activate;
         window.Show();
         window.Dispatcher.Invoke(window.UpdateLayout, DispatcherPriority.ApplicationIdle);
     }

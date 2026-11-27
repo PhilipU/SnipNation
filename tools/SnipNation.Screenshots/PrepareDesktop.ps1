@@ -81,7 +81,7 @@ public static class ScreenshotDesktop
         {
             className.Clear();
             GetClassName(window, className, className.Capacity);
-            if (className.ToString() == "ConsoleWindowClass")
+            if (className.ToString() is "ConsoleWindowClass" or "#32770")
                 ShowWindowAsync(window, hide);
 
             var view = FindWindowEx(window, IntPtr.Zero, "SHELLDLL_DefView", null);
