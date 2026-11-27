@@ -34,8 +34,14 @@ public static class ScreenshotDesktop
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern IntPtr FindWindowEx(IntPtr parent, IntPtr after, string className, string title);
 
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetClassName(IntPtr window, StringBuilder name, int length);
+
     [DllImport("user32.dll")]
-    public static extern bool ShowWindowAsync(IntPtr window, int command);
+    private static extern bool ShowWindowAsync(IntPtr window, int command);
+
+    [DllImport("user32.dll")]
+    private static extern void keybd_event(byte key, byte scanCode, uint flags, IntPtr extraInfo);
 
     [DllImport("user32.dll")]
     private static extern IntPtr WindowFromPoint(ScreenPoint point);
@@ -67,19 +73,34 @@ public static class ScreenshotDesktop
             name.ToString() == "Microsoft.Windows.CloudExperienceHost_cw5n1h2txyewy";
     }
 
-    public static void HideDesktopIcons()
+    public static void HideBackgroundWindows()
     {
+        const int hide = 0;
+        var className = new StringBuilder(128);
         EnumWindows((window, _) =>
         {
+            className.Clear();
+            GetClassName(window, className, className.Capacity);
+            if (className.ToString() == "ConsoleWindowClass")
+                ShowWindowAsync(window, hide);
+
             var view = FindWindowEx(window, IntPtr.Zero, "SHELLDLL_DefView", null);
             if (view != IntPtr.Zero)
             {
                 var list = FindWindowEx(view, IntPtr.Zero, "SysListView32", null);
                 if (list != IntPtr.Zero)
-                    ShowWindowAsync(list, 0);
+                    ShowWindowAsync(list, hide);
             }
             return true;
         }, IntPtr.Zero);
+    }
+
+    public static void DismissStartMenu()
+    {
+        const byte escape = 0x1B;
+        const uint keyUp = 2;
+        keybd_event(escape, 0, 0, IntPtr.Zero);
+        keybd_event(escape, 0, keyUp, IntPtr.Zero);
     }
 }
 '@
@@ -121,12 +142,6 @@ if (![ScreenshotDesktop]::SystemParametersInfo($setWallpaper, 0, '', $saveAndBro
     throw 'Could not set the desktop background.'
 }
 
-(New-Object -ComObject Shell.Application).MinimizeAll()
-Start-Sleep -Milliseconds 350
-$topWindow = [ScreenshotDesktop]::WindowAt($centerX, $centerY)
-$topProcess = Get-Process -Id ([ScreenshotDesktop]::Owner($topWindow)) -ErrorAction SilentlyContinue
-$hideWindow = 0
-if ($topProcess.ProcessName -eq 'StartMenuExperienceHost') {
-    [void][ScreenshotDesktop]::ShowWindowAsync($topWindow, $hideWindow)
-}
-[ScreenshotDesktop]::HideDesktopIcons()
+[ScreenshotDesktop]::HideBackgroundWindows()
+Start-Sleep -Milliseconds 800
+[ScreenshotDesktop]::DismissStartMenu()
