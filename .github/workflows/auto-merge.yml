@@ -38,8 +38,7 @@ jobs:
       github.event_name == 'workflow_run' &&
       github.event.workflow_run.event == 'pull_request' &&
       github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.head_repository.id == github.event.repository.id &&
-      github.event.workflow_run.pull_requests[0].base.ref == 'main'
+      github.event.workflow_run.head_repository.id == github.event.repository.id
     runs-on: ubuntu-24.04
     timeout-minutes: 3
     permissions:
@@ -50,12 +49,22 @@ jobs:
       - name: Start CI for the merged source
         env:
           GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
+          PR_BRANCH: ${{ github.event.workflow_run.head_branch }}
           PR_HEAD: ${{ github.event.workflow_run.head_sha }}
         run: |
+          # The run's pull request list can be empty after merge or on a rerun.
+          number=$(gh pr list --repo "$GITHUB_REPOSITORY" --base main --head "$PR_BRANCH" --state all \
+            --json number,headRefOid,isCrossRepository,isDraft,state |
+            jq -r --arg head "$PR_HEAD" 'first(.[] | select(
+              .headRefOid == $head and .isCrossRepository == false and .isDraft == false and .state != "CLOSED"
+            )) | .number')
+          if [[ -z "$number" ]]; then
+            exit 0
+          fi
+
           # Merges performed with GITHUB_TOKEN can suppress the main push workflow.
           for attempt in {1..12}; do
-            pull=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER")
+            pull=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$number")
             if ! jq -e --arg sha "$PR_HEAD" --arg repo "$GITHUB_REPOSITORY" '
               .draft == false and .base.ref == "main" and
               .head.repo.full_name == $repo and .head.sha == $sha
