@@ -58,25 +58,30 @@ public partial class ScreenshotApp : Application
         var green = Brand.Argb("LightAccent");
         var lime = Brand.Argb("Accent");
 
+        SaveExcerpt(store, firstPage, new PixelRect(48, 40, 665, 149));
+        SaveExcerpt(store, secondPage, new PixelRect(48, 207, 665, 159));
+        SaveExcerpt(store, thirdPage, new PixelRect(48, 105, 665, 166));
         store.SaveCapture(stream => Images.SavePng(thirdPage, stream));
 
         var drawing = store.SaveCapture(stream => Images.SavePng(firstPage, stream));
         CaptureStore.SaveEdits(drawing, new CaptureEdits(
         [
             new(AnnotationKind.Arrow, [new(718, 161), new(674, 136)], green, 5),
-            new(AnnotationKind.Line, [new(62, 239), new(297, 239)], green, 3),
+            new(AnnotationKind.Line, [new(62, 244), new(290, 244)], green, 3),
             new(AnnotationKind.Freehand,
-                [new(51, 321), new(49, 310), new(65, 303), new(115, 299), new(227, 299),
-                 new(294, 303), new(309, 311), new(307, 322), new(281, 331),
-                 new(218, 334), new(115, 333), new(67, 328), new(51, 321)], green, 3)
+                [new(51, 321), new(49, 312), new(62, 305), new(94, 301), new(144, 299),
+                 new(194, 299), new(229, 302), new(243, 308), new(247, 316), new(237, 326),
+                 new(214, 331), new(169, 334), new(114, 333), new(76, 330), new(51, 321)], green, 3)
         ]));
 
         var text = store.SaveCapture(stream => Images.SavePng(secondPage, stream));
-        CaptureStore.SaveEdits(text, new CaptureEdits(
+        var textEdits = new CaptureEdits(
         [
-            new(AnnotationKind.Highlight, [new(61, 122), new(445, 146)], (lime & 0x00FFFFFF) | 0x66000000, 4),
+            new(AnnotationKind.Highlight, [new(61, 122), new(305, 146)], (lime & 0x00FFFFFF) | 0x66000000, 4),
             new(AnnotationKind.Text, [new(62, 384)], green, 23, "Summarize this section.")
-        ]));
+        ]).CropTo(new PixelRect(18, 16, 724, 416));
+        CaptureStore.SaveEdits(text, textEdits);
+        VerifyJpeg(text);
 
         var gallery = new GalleryWindow();
         foreach (var capture in store.Recent(GalleryWindow.HistoryLimit))
@@ -86,7 +91,7 @@ public partial class ScreenshotApp : Application
         if (desktop)
         {
             var document = ShowDocument(firstPage);
-            await SaveDesktop(output, "desktop-gallery.png");
+            await SaveDesktop(gallery, output, "desktop-gallery.png");
             document.Close();
         }
         gallery.CloseForExit();
@@ -111,7 +116,7 @@ public partial class ScreenshotApp : Application
             editor.Top = workArea.Top + (workArea.Height - editor.Height) / 2;
             editor.ShowInTaskbar = true;
             editor.Activate();
-            await SaveDesktop(output, "desktop-editor.png");
+            await SaveDesktop(editor, output, "desktop-editor.png");
         }
         editor.Close();
     }
@@ -132,21 +137,49 @@ public partial class ScreenshotApp : Application
             Background = Paper,
             Content = new Image { Source = page }
         };
-        ShowForScreenshot(document);
+        document.ShowInTaskbar = false;
+        document.Show();
         return document;
     }
 
-    private static async Task SaveDesktop(string output, string file)
+    private static async Task SaveDesktop(Window window, string output, string file)
     {
-        var taskbar = FindWindow("Shell_TrayWnd", null);
-        if (taskbar == 0 || !NativeMethods.IsWindowVisible(taskbar) || !NativeMethods.GetWindowRect(taskbar, out var bounds))
-            throw new InvalidOperationException("Desktop screenshots require a visible Windows taskbar.");
-
         await Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
         await Task.Delay(350);
-        var taskbarBounds = bounds.ToPixels();
-        var primary = DesktopSnapshot.Take().Frames.Single(frame => !frame.Bounds.Intersect(taskbarBounds).IsEmpty);
+        var taskbar = RequireVisibleWindow(FindWindow("Shell_TrayWnd", null), "Windows taskbar");
+        RequireVisibleWindow(new WindowInteropHelper(window).Handle, window is GalleryWindow ? "SnipNation gallery" : "SnipNation editor");
+        var primary = DesktopSnapshot.Take().Frames.Single(frame => frame.Bounds.Contains(taskbar));
         SaveImage(primary.Image, output, file);
+    }
+
+    private static PixelPoint RequireVisibleWindow(nint handle, string name)
+    {
+        if (handle == 0 || !NativeMethods.IsWindowVisible(handle) || !NativeMethods.GetWindowRect(handle, out var bounds))
+            throw new InvalidOperationException($"The {name} is unavailable.");
+
+        var center = new PixelPoint(bounds.Left + (bounds.Right - bounds.Left) / 2,
+            bounds.Top + (bounds.Bottom - bounds.Top) / 2);
+        const uint rootWindow = 2;
+        var screenPoint = new NativeMethods.NativePoint { X = center.X, Y = center.Y };
+        if (GetAncestor(WindowFromPoint(screenPoint), rootWindow) != handle)
+            throw new InvalidOperationException($"The {name} is covered by another window.");
+        return center;
+    }
+
+    private static void SaveExcerpt(CaptureStore store, BitmapSource page, PixelRect bounds) =>
+        store.SaveCapture(stream => Images.SavePng(Images.Crop(page, bounds), stream));
+
+    private static void VerifyJpeg(CaptureFile capture)
+    {
+        var edits = CaptureStore.LoadEdits(capture);
+        var image = Images.Compose(Images.Crop(Images.Read(capture.OriginalPath), edits.Crop), edits.Annotations);
+        using var stream = new MemoryStream();
+        Images.SaveJpeg(image, stream);
+        stream.Position = 0;
+        var jpeg = new JpegBitmapDecoder(stream, BitmapCreateOptions.None, BitmapCacheOption.OnLoad).Frames.Single();
+        if (jpeg.PixelWidth != image.PixelWidth || jpeg.PixelHeight != image.PixelHeight)
+            throw new InvalidOperationException("The JPEG export dimensions do not match the edited screenshot.");
+        Console.WriteLine($"Verified JPEG export of the cropped and annotated screenshot ({jpeg.PixelWidth} x {jpeg.PixelHeight}).");
     }
 
     private static void SaveCaptureOverlay(BitmapSource example, string output)
@@ -234,4 +267,10 @@ public partial class ScreenshotApp : Application
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern nint FindWindow(string className, string? windowName);
+
+    [DllImport("user32.dll")]
+    private static extern nint WindowFromPoint(NativeMethods.NativePoint point);
+
+    [DllImport("user32.dll")]
+    private static extern nint GetAncestor(nint window, uint flags);
 }

@@ -28,11 +28,13 @@ If **Print Screen** is already in use, right-click the tray icon and choose **Ct
 
 ## Screenshots
 
-**On the Windows 11 desktop**
+**On the Microsoft Windows 11 desktop**
 
 ![SnipNation tray gallery beside a sample document on the Windows 11 desktop](https://raw.githubusercontent.com/PhilipU/SnipNation/readme-screenshots/desktop-gallery.png)
 
 ![SnipNation editor in a window above the Windows 11 taskbar](https://raw.githubusercontent.com/PhilipU/SnipNation/readme-screenshots/desktop-editor.png)
+
+<sub>Used with permission from Microsoft.</sub>
 
 <p>
   <img src="https://raw.githubusercontent.com/PhilipU/SnipNation/readme-screenshots/capture.png" width="500" alt="SnipNation outlining a window for capture">
