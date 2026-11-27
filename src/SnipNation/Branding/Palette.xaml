@@ -1,0 +1,17 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Color x:Key="BrandBackground">#15171C</Color>
+    <Color x:Key="BrandAccent">#C6FA78</Color>
+    <Color x:Key="BrandForeground">#FFFFFF</Color>
+    <Color x:Key="BrandMuted">#A0A0A0</Color>
+    <Color x:Key="BrandLightBackground">#F6F8F3</Color>
+    <Color x:Key="BrandLightAccent">#426711</Color>
+    <Color x:Key="BrandLightMuted">#59616B</Color>
+
+    <SolidColorBrush x:Key="PaneBrush" Color="{StaticResource BrandBackground}" />
+    <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource BrandAccent}" />
+    <SolidColorBrush x:Key="InkBrush" Color="{StaticResource BrandForeground}" />
+    <SolidColorBrush x:Key="MutedInkBrush" Color="{StaticResource BrandMuted}" />
+    <SolidColorBrush x:Key="DividerBrush" Color="{StaticResource BrandMuted}" Opacity="0.35" />
+    <SolidColorBrush x:Key="HoverBrush" Color="{StaticResource BrandAccent}" Opacity="0.14" />
+</ResourceDictionary>

@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.22000.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.22000.0</SupportedOSPlatformVersion>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <IncludeWindowsSDKRefFrameworkReferences>false</IncludeWindowsSDKRefFrameworkReferences>
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <StartupObject>SnipNation.Program</StartupObject>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets/SnipNation.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../SnipNation.Core/SnipNation.Core.csproj" />
+    <PackageReference Include="Velopack" Version="1.2.161" />
+    <Resource Include="Assets/SnipNation.ico" />
+    <Resource Include="Assets/Fonts/*.ttf" />
+    <None Update="Assets/Fonts/OFL.txt" TargetPath="licenses/Inter/OFL.txt" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="../../LICENSE" Link="LICENSE" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="../../THIRD-PARTY-NOTICES.md" Link="THIRD-PARTY-NOTICES.md" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+  <Target Name="IncludeRuntimeLicenseFiles" AfterTargets="ComputeResolvedFilesToPublishList"
+          Condition="'$(SelfContained)' == 'true'">
+    <ItemGroup>
+      <RuntimeLicenseFile Include="%(ResolvedRuntimePack.PackageDirectory)/LICENSE*;%(ResolvedRuntimePack.PackageDirectory)/THIRD-PARTY-NOTICES*"
+                          Condition="'%(ResolvedRuntimePack.PackageDirectory)' != '' and
+                                     ('%(ResolvedRuntimePack.FrameworkName)' == 'Microsoft.NETCore.App' or
+                                      '%(ResolvedRuntimePack.FrameworkName)' == 'Microsoft.WindowsDesktop.App')">
+        <PackageId>%(ResolvedRuntimePack.NuGetPackageId)</PackageId>
+      </RuntimeLicenseFile>
+      <ResolvedFileToPublish Include="@(RuntimeLicenseFile)">
+        <RelativePath>licenses/%(RuntimeLicenseFile.PackageId)/%(RuntimeLicenseFile.Filename)%(RuntimeLicenseFile.Extension)</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      </ResolvedFileToPublish>
+    </ItemGroup>
+  </Target>
+</Project>

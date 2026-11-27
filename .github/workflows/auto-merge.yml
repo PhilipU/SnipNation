@@ -1,0 +1,29 @@
+name: Enable auto-merge
+
+on:
+  pull_request_target:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review, edited]
+
+permissions: {}
+
+jobs:
+  enable:
+    name: Enable auto-merge for the pull request
+    if: >-
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.head.repo.id == github.event.repository.id
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Enable GitHub auto-merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          gh pr merge "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" \
+            --auto --merge --match-head-commit "$PR_HEAD"

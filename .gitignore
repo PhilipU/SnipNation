@@ -1,0 +1,15 @@
+**/bin/
+**/obj/
+/.codex-attachments/
+.vs/
+TestResults/
+artifacts/
+Releases/
+*.user
+*.suo
+.env
+.env.*
+*.pfx
+*.p12
+*.pem
+*.key
