@@ -7,6 +7,13 @@ using System.Text;
 
 public static class ScreenshotDesktop
 {
+    [StructLayout(LayoutKind.Sequential)]
+    private struct ScreenPoint
+    {
+        public int X;
+        public int Y;
+    }
+
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
     private static extern int GetPackageFamilyName(IntPtr process, ref uint length, StringBuilder name);
 
@@ -15,6 +22,9 @@ public static class ScreenshotDesktop
 
     [DllImport("user32.dll")]
     public static extern bool SetSysColors(int count, int[] elements, int[] colors);
+
+    [DllImport("user32.dll")]
+    public static extern int GetSystemMetrics(int index);
 
     private delegate bool EnumWindow(IntPtr window, IntPtr parameter);
 
@@ -26,6 +36,28 @@ public static class ScreenshotDesktop
 
     [DllImport("user32.dll")]
     public static extern bool ShowWindowAsync(IntPtr window, int command);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr WindowFromPoint(ScreenPoint point);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetAncestor(IntPtr window, uint flags);
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr window, out int processId);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern bool PostMessage(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
+
+    public static IntPtr WindowAt(int x, int y) => GetAncestor(WindowFromPoint(new ScreenPoint { X = x, Y = y }), 2);
+
+    public static int Owner(IntPtr window)
+    {
+        GetWindowThreadProcessId(window, out int processId);
+        return processId;
+    }
+
+    public static bool CloseWindow(IntPtr window) => PostMessage(window, 0x0010, IntPtr.Zero, IntPtr.Zero);
 
     public static bool IsSetupHost(IntPtr process)
     {
@@ -53,15 +85,25 @@ public static class ScreenshotDesktop
 '@
 
 # Close first-run windows in the current GitHub-hosted test session.
-$runnerSession = (Get-Process -Id $PID).SessionId
-Get-Process -Name WWAHost -ErrorAction SilentlyContinue |
-    Where-Object { $_.SessionId -eq $runnerSession -and [ScreenshotDesktop]::IsSetupHost($_.Handle) } |
-    ForEach-Object { [void]$_.CloseMainWindow() }
+$screenWidth = 0
+$screenHeight = 1
+$centerX = [int]([ScreenshotDesktop]::GetSystemMetrics($screenWidth) / 2)
+$centerY = [int]([ScreenshotDesktop]::GetSystemMetrics($screenHeight) / 2)
+$topWindow = [ScreenshotDesktop]::WindowAt($centerX, $centerY)
+$topProcess = Get-Process -Id ([ScreenshotDesktop]::Owner($topWindow)) -ErrorAction SilentlyContinue
+if ($topProcess.ProcessName -eq 'WWAHost' -and [ScreenshotDesktop]::IsSetupHost($topProcess.Handle)) {
+    $setupPolicy = 'HKCU:\Software\Policies\Microsoft\Windows\OOBE'
+    New-Item -Path $setupPolicy -Force | Out-Null
+    New-ItemProperty -Path $setupPolicy -Name DisablePrivacyExperience -Value 1 -PropertyType DWord -Force | Out-Null
+    [void][ScreenshotDesktop]::CloseWindow($topWindow)
+    Start-Sleep -Seconds 2
+}
 
-Start-Sleep -Milliseconds 800
-Get-Process -Name wsl -ErrorAction SilentlyContinue |
-    Where-Object { $_.SessionId -eq $runnerSession -and $_.MainWindowTitle -like '*\wsl.exe' } |
-    ForEach-Object { [void]$_.CloseMainWindow() }
+$topWindow = [ScreenshotDesktop]::WindowAt($centerX, $centerY)
+$topProcess = Get-Process -Id ([ScreenshotDesktop]::Owner($topWindow)) -ErrorAction SilentlyContinue
+if ($topProcess.ProcessName -eq 'wsl') {
+    [void][ScreenshotDesktop]::CloseWindow($topWindow)
+}
 
 # Use a plain desktop without third-party shortcuts or wallpaper.
 $palettePath = Join-Path $PSScriptRoot '../../assets/branding/palette.json'
@@ -80,8 +122,11 @@ if (![ScreenshotDesktop]::SystemParametersInfo($setWallpaper, 0, '', $saveAndBro
 }
 
 (New-Object -ComObject Shell.Application).MinimizeAll()
+Start-Sleep -Milliseconds 350
+$topWindow = [ScreenshotDesktop]::WindowAt($centerX, $centerY)
+$topProcess = Get-Process -Id ([ScreenshotDesktop]::Owner($topWindow)) -ErrorAction SilentlyContinue
 $hideWindow = 0
-Get-Process -Name StartMenuExperienceHost -ErrorAction SilentlyContinue |
-    Where-Object { $_.SessionId -eq $runnerSession -and $_.MainWindowHandle -ne 0 } |
-    ForEach-Object { [void][ScreenshotDesktop]::ShowWindowAsync($_.MainWindowHandle, $hideWindow) }
+if ($topProcess.ProcessName -eq 'StartMenuExperienceHost') {
+    [void][ScreenshotDesktop]::ShowWindowAsync($topWindow, $hideWindow)
+}
 [ScreenshotDesktop]::HideDesktopIcons()
