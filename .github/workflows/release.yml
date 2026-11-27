@@ -1,0 +1,180 @@
+name: Release SnipNation
+
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: release-snipnation
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  prepare:
+    name: Prepare and validate the release
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    permissions:
+      actions: write
+      checks: read
+      contents: write
+      issues: write
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_BRANCH: release-please--branches--main
+    outputs:
+      sha: ${{ steps.pending.outputs.sha || steps.merge.outputs.sha }}
+      version: ${{ steps.pending.outputs.version || steps.merge.outputs.version }}
+    steps:
+      - name: Find a previously merged release
+        id: pending
+        run: |
+          manifest="repos/$GITHUB_REPOSITORY/contents/.release-please-manifest.json"
+          version=$(gh api --method GET "$manifest" -f ref=main --jq .content | base64 --decode | jq -r '."." // empty')
+          if [[ -z "$version" ]]; then
+            exit 0
+          fi
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+
+          published=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" |
+            jq -s --arg tag "v$version" 'any(.[][]; .tag_name == $tag and .draft == false)')
+          if [[ "$published" == true ]]; then
+            exit 0
+          fi
+
+          sha=$(gh pr list --repo "$GITHUB_REPOSITORY" --base main --head "$RELEASE_BRANCH" --state merged \
+            --json isCrossRepository,mergeCommit,mergedAt \
+            --jq 'map(select(.isCrossRepository == false)) | max_by(.mergedAt).mergeCommit.oid // empty')
+          [[ "$sha" =~ ^[0-9a-f]{40}$ ]]
+          merged_version=$(gh api --method GET "$manifest" -f ref="$sha" --jq .content | base64 --decode | jq -er '."."')
+          [[ "$merged_version" == "$version" ]]
+          printf 'sha=%s\nversion=%s\n' "$sha" "$version" >> "$GITHUB_OUTPUT"
+
+      - name: Generate the changelog and release pull request
+        id: proposal
+        if: steps.pending.outputs.sha == ''
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          target-branch: main
+          skip-github-release: true
+
+      - name: Run required CI and merge the release pull request
+        id: merge
+        if: steps.proposal.outputs.prs_created == 'true'
+        env:
+          RELEASE_PR: ${{ steps.proposal.outputs.pr }}
+        run: |
+          number=$(jq -er .number <<< "$RELEASE_PR")
+          pull=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$number")
+          head=$(jq -er --arg repo "$GITHUB_REPOSITORY" --arg branch "$RELEASE_BRANCH" '
+            select(.state == "open" and .draft == false and .base.ref == "main" and
+              .head.repo.full_name == $repo and .head.ref == $branch) | .head.sha
+          ' <<< "$pull")
+
+          # Pull requests opened with GITHUB_TOKEN need an explicit CI run.
+          run_id=$(gh api --method POST -H 'X-GitHub-Api-Version: 2026-03-10' \
+            "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/dispatches" \
+            -f ref="$RELEASE_BRANCH" --jq .workflow_run_id)
+          [[ "$run_id" =~ ^[0-9]+$ ]]
+          tested_head=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id" --jq .head_sha)
+          [[ "$tested_head" == "$head" ]]
+          gh run watch "$run_id" --repo "$GITHUB_REPOSITORY" --interval 5 --exit-status
+          gh pr merge "$number" --repo "$GITHUB_REPOSITORY" --merge --match-head-commit "$head"
+
+          sha=$(gh pr view "$number" --repo "$GITHUB_REPOSITORY" --json mergeCommit --jq .mergeCommit.oid)
+          [[ "$sha" =~ ^[0-9a-f]{40}$ ]]
+          version=$(gh api --method GET "repos/$GITHUB_REPOSITORY/contents/.release-please-manifest.json" \
+            -f ref="$sha" --jq .content | base64 --decode | jq -er '."."')
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          printf 'sha=%s\nversion=%s\n' "$sha" "$version" >> "$GITHUB_OUTPUT"
+
+      - name: Report that there are no release changes
+        if: steps.pending.outputs.sha == '' && steps.proposal.outputs.prs_created != 'true'
+        run: echo 'Release Please found no new release changes.' >> "$GITHUB_STEP_SUMMARY"
+
+  package:
+    name: Package the Windows installer on Ubuntu
+    needs: prepare
+    if: needs.prepare.outputs.sha != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: '**/packages.lock.json'
+      - name: Build the installer and update files
+        run: pwsh -NoProfile -File scripts/build-installer.ps1 -Version "$VERSION"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-${{ env.VERSION }}
+          path: artifacts/releases/${{ env.VERSION }}
+          if-no-files-found: error
+          compression-level: 0
+
+  publish:
+    name: Publish the complete GitHub release
+    needs: [prepare, package]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERSION: ${{ needs.prepare.outputs.version }}
+      RELEASE_SHA: ${{ needs.prepare.outputs.sha }}
+    steps:
+      - name: Find an existing release draft
+        id: existing
+        run: |
+          release=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" |
+            jq -cs --arg tag "v$VERSION" 'first(.[][] | select(.tag_name == $tag)) // empty')
+          if [[ -n "$release" ]]; then
+            jq -e --arg sha "$RELEASE_SHA" '.target_commitish == $sha' <<< "$release" > /dev/null
+            jq -r '"id=\(.id)\npublished=\(.draft == false)"' <<< "$release" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Create the GitHub release draft
+        id: draft
+        if: steps.existing.outputs.id == ''
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          target-branch: main
+          skip-github-pull-request: true
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: steps.existing.outputs.published != 'true'
+        with:
+          name: release-${{ env.VERSION }}
+          path: release-assets
+      - name: Upload the installer and publish
+        if: steps.existing.outputs.published != 'true'
+        env:
+          RELEASE_ID: ${{ steps.existing.outputs.id || steps.draft.outputs.id }}
+        run: |
+          [[ "$RELEASE_ID" =~ ^[0-9]+$ ]]
+          draft=$(gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID")
+          jq -e --arg tag "v$VERSION" --arg sha "$RELEASE_SHA" '
+            .draft == true and .tag_name == $tag and .target_commitish == $sha
+          ' <<< "$draft" > /dev/null
+          gh release upload "v$VERSION" --repo "$GITHUB_REPOSITORY" --clobber \
+            release-assets/SnipNation-win-Setup.exe \
+            "release-assets/SnipNation-$VERSION-full.nupkg" \
+            release-assets/releases.win.json
+          gh release edit "v$VERSION" --repo "$GITHUB_REPOSITORY" --draft=false --latest
+          printf '[SnipNation %s](%s/%s/releases/tag/v%s) is available.\n' \
+            "$VERSION" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$VERSION" >> "$GITHUB_STEP_SUMMARY"
