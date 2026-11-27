@@ -26,35 +26,60 @@ internal static class Images
 
     internal static ImageSource ReadPreview(CaptureFile capture)
     {
-        var preview = Read(capture.OriginalPath, 240);
-        Annotation[] annotations;
+        const int thumbnailSize = 240;
         try
         {
-            annotations = CaptureStore.LoadAnnotations(capture);
+            var edits = CaptureStore.LoadEdits(capture);
+            if (edits.Crop is { } crop)
+            {
+                var cropped = Crop(Read(capture.OriginalPath), crop);
+                var scale = Math.Min(1, (double)thumbnailSize / Math.Max(cropped.PixelWidth, cropped.PixelHeight));
+                return Render(cropped, edits.Annotations, scale);
+            }
+
+            var preview = Read(capture.OriginalPath, thumbnailSize);
+            if (edits.Annotations.Length == 0)
+                return preview;
+
+            using var stream = File.OpenRead(capture.OriginalPath);
+            var decoder = new PngBitmapDecoder(stream, BitmapCreateOptions.DelayCreation, BitmapCacheOption.OnDemand);
+            var original = decoder.Frames[0];
+            var group = new DrawingGroup();
+            using (var context = group.Open())
+                Draw(context, preview, new Size(original.PixelWidth, original.PixelHeight), edits.Annotations);
+
+            var thumbnail = new DrawingImage(group);
+            thumbnail.Freeze();
+            return thumbnail;
         }
         catch (Exception error) when (IsFileError(error))
         {
-            return preview;
+            return Read(capture.OriginalPath, thumbnailSize);
         }
-
-        if (annotations.Length == 0)
-            return preview;
-
-        using var stream = File.OpenRead(capture.OriginalPath);
-        var decoder = new PngBitmapDecoder(stream, BitmapCreateOptions.DelayCreation, BitmapCacheOption.OnDemand);
-        var original = decoder.Frames[0];
-        var group = new DrawingGroup();
-        using (var context = group.Open())
-            Draw(context, preview, new Size(original.PixelWidth, original.PixelHeight), annotations);
-
-        var thumbnail = new DrawingImage(group);
-        thumbnail.Freeze();
-        return thumbnail;
     }
 
-    internal static void SavePng(BitmapSource image, Stream stream)
+    internal static BitmapSource Crop(BitmapSource original, PixelRect? selection)
     {
-        var encoder = new PngBitmapEncoder();
+        if (selection is not { } crop)
+            return original;
+
+        if (crop.X < 0 || crop.Y < 0 || crop.IsEmpty ||
+            crop.Width > original.PixelWidth - crop.X || crop.Height > original.PixelHeight - crop.Y)
+            throw new InvalidDataException("The crop is outside the original screenshot.");
+
+        var image = new CroppedBitmap(original, new Int32Rect(crop.X, crop.Y, crop.Width, crop.Height));
+        image.Freeze();
+        return image;
+    }
+
+    internal static void SavePng(BitmapSource image, Stream stream) =>
+        Encode(image, stream, new PngBitmapEncoder());
+
+    internal static void SaveJpeg(BitmapSource image, Stream stream) =>
+        Encode(image, stream, new JpegBitmapEncoder { QualityLevel = 92 });
+
+    private static void Encode(BitmapSource image, Stream stream, BitmapEncoder encoder)
+    {
         encoder.Frames.Add(BitmapFrame.Create(image));
         encoder.Save(stream);
     }
@@ -69,16 +94,22 @@ internal static class Images
         context.Pop();
     }
 
-    internal static BitmapSource Compose(BitmapSource image, IReadOnlyList<Annotation> annotations)
-    {
-        if (annotations.Count == 0)
-            return image;
+    internal static BitmapSource Compose(BitmapSource image, IReadOnlyList<Annotation> annotations) =>
+        annotations.Count == 0 ? image : Render(image, annotations, 1);
 
+    private static BitmapSource Render(BitmapSource image, IReadOnlyList<Annotation> annotations, double scale)
+    {
+        var width = Math.Max(1, (int)Math.Round(image.PixelWidth * scale));
+        var height = Math.Max(1, (int)Math.Round(image.PixelHeight * scale));
         var visual = new DrawingVisual();
         using (var context = visual.RenderOpen())
+        {
+            context.PushTransform(new ScaleTransform((double)width / image.PixelWidth, (double)height / image.PixelHeight));
             Draw(context, image, new Size(image.PixelWidth, image.PixelHeight), annotations);
+            context.Pop();
+        }
 
-        var bitmap = new RenderTargetBitmap(image.PixelWidth, image.PixelHeight, 96, 96, PixelFormats.Pbgra32);
+        var bitmap = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
         bitmap.Render(visual);
         bitmap.Freeze();
         return bitmap;

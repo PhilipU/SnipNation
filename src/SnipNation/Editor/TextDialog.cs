@@ -35,9 +35,16 @@ internal static class TextDialog
         };
         AutomationProperties.SetName(input, "Text");
 
-        var accept = new Button { Content = "OK", IsDefault = true, MinWidth = 76, Margin = new Thickness(0, 0, 8, 0) };
+        var style = (Style)owner.FindResource("EditorIconButton");
+        var accept = new Button
+        {
+            Content = SvgIconExtension.GetIcon("apply"), ToolTip = "Apply text", Style = style, IsDefault = true
+        };
         accept.Click += (_, _) => dialog.DialogResult = true;
-        var cancel = new Button { Content = "Cancel", IsCancel = true, MinWidth = 86 };
+        var cancel = new Button
+        {
+            Content = SvgIconExtension.GetIcon("cancel"), ToolTip = "Cancel", Style = style, IsCancel = true
+        };
         var buttons = new StackPanel
         {
             Orientation = Orientation.Horizontal,

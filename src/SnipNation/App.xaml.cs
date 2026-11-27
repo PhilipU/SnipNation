@@ -293,11 +293,11 @@ public partial class App : Application
 
         try
         {
-            var document = await Task.Run(() => (Image: Images.Read(capture.OriginalPath), Annotations: CaptureStore.LoadAnnotations(capture)));
+            var document = await Task.Run(() => (Image: Images.Read(capture.OriginalPath), Edits: CaptureStore.LoadEdits(capture)));
             if (_exiting)
                 return;
 
-            var editor = new EditorWindow(capture, document.Image, document.Annotations);
+            var editor = new EditorWindow(capture, document.Image, document.Edits);
             editor.Saved += () => _gallery.AddOrUpdate(capture, ReadPreview(capture));
             editor.Closed += (_, _) => _editors.Remove(capture);
             _editors.Add(capture, editor);
@@ -320,7 +320,12 @@ public partial class App : Application
     {
         try
         {
-            var document = await Task.Run(() => (Image: Images.Read(capture.OriginalPath), Annotations: CaptureStore.LoadAnnotations(capture)));
+            var document = await Task.Run(() =>
+            {
+                var edits = CaptureStore.LoadEdits(capture);
+                var image = Images.Crop(Images.Read(capture.OriginalPath), edits.Crop);
+                return (Image: image, edits.Annotations);
+            });
             if (_exiting || _captureTask is { IsCompleted: false })
                 return;
             var copied = await Images.CopyAsync(Images.Compose(document.Image, document.Annotations));

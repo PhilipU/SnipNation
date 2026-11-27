@@ -29,20 +29,6 @@ jobs:
           - platform: Windows
             runner: windows-11-arm
     steps:
-      - name: Check the Windows desktop session
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          Add-Type @'
-          using System;
-          using System.Runtime.InteropServices;
-          public static class DesktopCheck {
-            [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-            public static extern IntPtr FindWindow(string className, string windowName);
-          }
-          '@
-          $taskbar = [DesktopCheck]::FindWindow('Shell_TrayWnd', $null)
-          Write-Output "Interactive: $([Environment]::UserInteractive), session: $((Get-Process -Id $PID).SessionId), taskbar: $taskbar"
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
@@ -59,7 +45,7 @@ jobs:
         run: dotnet test SnipNation.slnx -c Release --no-build --no-restore
       - name: Generate README screenshots
         if: runner.os == 'Windows'
-        run: dotnet run --project tools/SnipNation.Screenshots -c Release --no-build --no-restore -- artifacts/screenshots
+        run: dotnet run --project tools/SnipNation.Screenshots -c Release --no-build --no-restore -- artifacts/screenshots --desktop
       - name: Upload screenshots
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -116,7 +102,7 @@ jobs:
             git checkout -B "$SCREENSHOT_BRANCH" FETCH_HEAD
           fi
 
-          for image in capture.png gallery.png editor-drawing.png editor-text.png; do
+          for image in capture.png gallery.png editor-drawing.png editor-text.png desktop-gallery.png desktop-editor.png; do
             file="$RUNNER_TEMP/snipnation-screenshots/$image"
             test -s "$file"
             cp "$file" "$image"

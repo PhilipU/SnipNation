@@ -56,9 +56,28 @@
         </Style.Triggers>
     </Style>
 
-    <Style x:Key="EditorTool" TargetType="RadioButton" BasedOn="{StaticResource BrandButton}">
-        <Setter Property="BorderBrush" Value="Transparent" />
-        <Setter Property="Margin" Value="0,0,3,3" />
+    <Style x:Key="EditorIconButton" TargetType="ButtonBase" BasedOn="{StaticResource BrandButton}">
+        <Setter Property="Width" Value="48" />
+        <Setter Property="Height" Value="48" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Margin" Value="2" />
+        <Setter Property="AutomationProperties.Name" Value="{Binding ToolTip, RelativeSource={RelativeSource Self}}" />
+        <Setter Property="ContentTemplate">
+            <Setter.Value>
+                <DataTemplate>
+                    <Viewbox Width="26" Height="26" IsHitTestVisible="False">
+                        <Grid Width="24" Height="24">
+                            <Path Data="{Binding}" StrokeThickness="1.8" StrokeLineJoin="Round"
+                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ButtonBase}}" />
+                        </Grid>
+                    </Viewbox>
+                </DataTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="EditorModeButton" TargetType="ToggleButton" BasedOn="{StaticResource EditorIconButton}">
         <Style.Triggers>
             <Trigger Property="IsChecked" Value="True">
                 <Setter Property="Background" Value="{StaticResource AccentBrush}" />

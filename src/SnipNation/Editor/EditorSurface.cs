@@ -9,12 +9,13 @@ namespace SnipNation.Editor;
 
 internal sealed class EditorSurface : FrameworkElement
 {
-    private readonly BitmapSource _image;
+    private BitmapSource _image;
     private IReadOnlyList<Annotation> _annotations = [];
     private Annotation? _preview;
     private int _selection = -1;
     private bool _moving;
     private double _zoom = 1;
+    private PixelRect? _cropSelection;
 
     internal EditorSurface(BitmapSource image)
     {
@@ -26,19 +27,39 @@ internal sealed class EditorSurface : FrameworkElement
         RenderOptions.SetBitmapScalingMode(this, BitmapScalingMode.HighQuality);
     }
 
-    internal void SetView(IReadOnlyList<Annotation> annotations, int selection, Annotation? preview, bool moving, double zoom)
+    internal void SetImage(BitmapSource image)
+    {
+        _image = image;
+        Width = image.PixelWidth;
+        Height = image.PixelHeight;
+        InvalidateVisual();
+    }
+
+    internal void SetView(IReadOnlyList<Annotation> annotations, int selection, Annotation? preview, bool moving, double zoom,
+        PixelRect? cropSelection)
     {
         _annotations = annotations;
         _selection = selection;
         _preview = preview;
         _moving = moving;
         _zoom = zoom;
+        _cropSelection = cropSelection;
         InvalidateVisual();
     }
 
     protected override void OnRender(DrawingContext context)
     {
         Images.Draw(context, _image, new Size(Width, Height), VisibleAnnotations());
+        if (_cropSelection is { } crop)
+        {
+            var cropBounds = new Rect(crop.X, crop.Y, crop.Width, crop.Height);
+            var outside = new CombinedGeometry(GeometryCombineMode.Exclude, new RectangleGeometry(new Rect(Width, Height)),
+                new RectangleGeometry(cropBounds));
+            context.PushOpacity(0.62);
+            context.DrawGeometry(Brand.BrushFor("PaneBrush"), null, outside);
+            context.Pop();
+            context.DrawRectangle(null, new Pen(Brand.BrushFor("AccentBrush"), 2 / _zoom), cropBounds);
+        }
         if (_selection < 0)
             return;
 

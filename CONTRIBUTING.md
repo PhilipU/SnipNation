@@ -14,12 +14,14 @@ dotnet test SnipNation.slnx -c Release --no-build --no-restore
 
 ## README screenshots
 
-GitHub Actions renders the capture, gallery, and editor views on Windows. Download **snipnation-screenshots** from a pull request's **Build and test** run to review the current images. Successful builds of `main` publish those images to `readme-screenshots`.
+GitHub Actions renders the capture, gallery, and editor views on Windows 11. It also captures the gallery and editor on the Windows desktop with the taskbar visible. Download **snipnation-screenshots** from a pull request's **Build and test** run to review the current images. Successful builds of `main` publish those images to `readme-screenshots`.
 
-When an interface change affects a screenshot, check the result and update the sample content in `tools/SnipNation.Screenshots` if needed. Use examples you can share publicly. Show the toolbar and the resulting annotations.
+When an interface change affects a screenshot, check the result and update the sample content in `tools/SnipNation.Screenshots` if needed. Use the Lorem Ipsum document with its own paper and ink colors. Show the toolbar and the resulting annotations.
 
 To produce the same images on Windows after building, run the following command.
 
 ```powershell
 dotnet run --project tools/SnipNation.Screenshots -c Release --no-build --no-restore -- artifacts/screenshots
 ```
+
+Add `--desktop` to include the two full-screen images. Run that option in an interactive test session with the taskbar visible and only public content on the desktop.
