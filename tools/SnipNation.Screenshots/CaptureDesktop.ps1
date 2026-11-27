@@ -1,0 +1,171 @@
+param([string]$OutputDirectory = 'artifacts/screenshots')
+
+$ErrorActionPreference = 'Stop'
+
+Add-Type @'
+using System;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Threading;
+
+public static class ScreenshotDesktop
+{
+    [StructLayout(LayoutKind.Sequential)]
+    private struct ScreenPoint
+    {
+        public int X;
+        public int Y;
+    }
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetPackageFamilyName(IntPtr process, ref uint length, StringBuilder name);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    public static extern bool SystemParametersInfo(uint action, uint parameter, string value, uint flags);
+
+    [DllImport("user32.dll")]
+    public static extern bool SetSysColors(int count, int[] elements, int[] colors);
+
+    [DllImport("user32.dll")]
+    public static extern int GetSystemMetrics(int index);
+
+    private delegate bool EnumWindow(IntPtr window, IntPtr parameter);
+
+    [DllImport("user32.dll")]
+    private static extern bool EnumWindows(EnumWindow callback, IntPtr parameter);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern IntPtr FindWindowEx(IntPtr parent, IntPtr after, string className, string title);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetClassName(IntPtr window, StringBuilder name, int length);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetWindowText(IntPtr window, StringBuilder title, int length);
+
+    [DllImport("user32.dll")]
+    private static extern bool ShowWindowAsync(IntPtr window, int command);
+
+    [DllImport("user32.dll")]
+    private static extern void keybd_event(byte key, byte scanCode, uint flags, IntPtr extraInfo);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr WindowFromPoint(ScreenPoint point);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetAncestor(IntPtr window, uint flags);
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr window, out int processId);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern bool PostMessage(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
+
+    public static IntPtr WindowAt(int x, int y) => GetAncestor(WindowFromPoint(new ScreenPoint { X = x, Y = y }), 2);
+
+    public static int Owner(IntPtr window)
+    {
+        GetWindowThreadProcessId(window, out int processId);
+        return processId;
+    }
+
+    public static bool CloseWindow(IntPtr window) => PostMessage(window, 0x0010, IntPtr.Zero, IntPtr.Zero);
+
+    public static bool IsSetupHost(IntPtr process)
+    {
+        uint length = 256;
+        var name = new StringBuilder((int)length);
+        return GetPackageFamilyName(process, ref length, name) == 0 &&
+            name.ToString() == "Microsoft.Windows.CloudExperienceHost_cw5n1h2txyewy";
+    }
+
+    public static Timer KeepBackgroundClear()
+    {
+        HideBackgroundWindows();
+        return new Timer(_ => HideBackgroundWindows(), null, 200, 200);
+    }
+
+    private static void HideBackgroundWindows()
+    {
+        const int hide = 0;
+        var className = new StringBuilder(128);
+        var title = new StringBuilder(256);
+        EnumWindows((window, _) =>
+        {
+            className.Clear();
+            GetClassName(window, className, className.Capacity);
+            var name = className.ToString();
+            if (name is "ConsoleWindowClass" or "CASCADIA_HOSTING_WINDOW_CLASS" or "#32770")
+            {
+                ShowWindowAsync(window, hide);
+                if (name == "ConsoleWindowClass")
+                {
+                    title.Clear();
+                    GetWindowText(window, title, title.Capacity);
+                    if (title.ToString().EndsWith(@"\wsl.exe", StringComparison.OrdinalIgnoreCase))
+                        CloseWindow(window);
+                }
+            }
+
+            var view = FindWindowEx(window, IntPtr.Zero, "SHELLDLL_DefView", null);
+            if (view != IntPtr.Zero)
+            {
+                var list = FindWindowEx(view, IntPtr.Zero, "SysListView32", null);
+                if (list != IntPtr.Zero)
+                    ShowWindowAsync(list, hide);
+            }
+            return true;
+        }, IntPtr.Zero);
+    }
+
+    public static void DismissStartMenu()
+    {
+        const byte escape = 0x1B;
+        const uint keyUp = 2;
+        keybd_event(escape, 0, 0, IntPtr.Zero);
+        keybd_event(escape, 0, keyUp, IntPtr.Zero);
+    }
+}
+'@
+
+# Close first-run windows in the current GitHub-hosted test session.
+$screenWidth = 0
+$screenHeight = 1
+$centerX = [int]([ScreenshotDesktop]::GetSystemMetrics($screenWidth) / 2)
+$centerY = [int]([ScreenshotDesktop]::GetSystemMetrics($screenHeight) / 2)
+$topWindow = [ScreenshotDesktop]::WindowAt($centerX, $centerY)
+$topProcess = Get-Process -Id ([ScreenshotDesktop]::Owner($topWindow)) -ErrorAction SilentlyContinue
+if ($topProcess.ProcessName -eq 'WWAHost' -and [ScreenshotDesktop]::IsSetupHost($topProcess.Handle)) {
+    $setupPolicy = 'HKCU:\Software\Policies\Microsoft\Windows\OOBE'
+    New-Item -Path $setupPolicy -Force | Out-Null
+    New-ItemProperty -Path $setupPolicy -Name DisablePrivacyExperience -Value 1 -PropertyType DWord -Force | Out-Null
+    [void][ScreenshotDesktop]::CloseWindow($topWindow)
+    Start-Sleep -Seconds 2
+}
+
+# Use a plain desktop without third-party shortcuts or wallpaper.
+$palettePath = Join-Path $PSScriptRoot '../../assets/branding/palette.json'
+$hex = (Get-Content $palettePath -Raw | ConvertFrom-Json).lightMuted.TrimStart('#')
+$red = [Convert]::ToInt32($hex.Substring(0, 2), 16)
+$green = [Convert]::ToInt32($hex.Substring(2, 2), 16)
+$blue = [Convert]::ToInt32($hex.Substring(4, 2), 16)
+$desktopColor = $red -bor ($green -shl 8) -bor ($blue -shl 16)
+$setWallpaper = 20
+$saveAndBroadcast = 3
+$desktopBackground = 1
+Set-ItemProperty -Path 'HKCU:\Control Panel\Colors' -Name Background -Value "$red $green $blue"
+if (![ScreenshotDesktop]::SystemParametersInfo($setWallpaper, 0, '', $saveAndBroadcast) -or
+    ![ScreenshotDesktop]::SetSysColors(1, @($desktopBackground), @($desktopColor))) {
+    throw 'Could not set the desktop background.'
+}
+
+$desktopCleanup = [ScreenshotDesktop]::KeepBackgroundClear()
+try {
+    Start-Sleep -Milliseconds 800
+    [ScreenshotDesktop]::DismissStartMenu()
+    dotnet run --project $PSScriptRoot -c Release --no-build --no-restore -- $OutputDirectory --desktop
+    exit $LASTEXITCODE
+}
+finally {
+    $desktopCleanup.Dispose()
+}

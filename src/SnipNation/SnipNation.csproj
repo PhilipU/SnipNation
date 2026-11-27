@@ -18,6 +18,7 @@
     <ProjectReference Include="../SnipNation.Core/SnipNation.Core.csproj" />
     <PackageReference Include="Velopack" Version="1.2.161" />
     <Resource Include="Assets/SnipNation.ico" />
+    <Resource Include="Assets/EditorIcons.svg" />
     <Resource Include="Assets/Fonts/*.ttf" />
     <None Update="Assets/Fonts/OFL.txt" TargetPath="licenses/Inter/OFL.txt" CopyToPublishDirectory="PreserveNewest" />
     <None Include="../../LICENSE" Link="LICENSE" CopyToPublishDirectory="PreserveNewest" />

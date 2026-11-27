@@ -21,10 +21,10 @@ public sealed class CaptureStoreTests : IDisposable
             new(AnnotationKind.Text, [new(30, 90)], 0xFFFFFFFF, 24, "Open\nSave…")
         ];
 
-        Assert.Empty(CaptureStore.LoadAnnotations(capture));
-        CaptureStore.SaveAnnotations(capture, annotations);
+        Assert.Empty(CaptureStore.LoadEdits(capture).Annotations);
+        CaptureStore.SaveEdits(capture, new CaptureEdits(annotations));
         var reopened = Assert.Single(new CaptureStore(_root).Recent(36));
-        var restored = CaptureStore.LoadAnnotations(reopened);
+        var restored = CaptureStore.LoadEdits(reopened).Annotations;
 
         Assert.Equal(annotations.Length, restored.Length);
         for (var index = 0; index < annotations.Length; index++)
@@ -33,6 +33,29 @@ public sealed class CaptureStoreTests : IDisposable
             Assert.Equal(annotations[index], restored[index] with { Points = annotations[index].Points });
         }
         Assert.Equal("original", File.ReadAllText(reopened.OriginalPath));
+    }
+
+    [Fact]
+    public void CroppingAnExistingCaptureKeepsItsAnnotationsAligned()
+    {
+        var capture = new CaptureStore(_root).SaveCapture(stream => stream.Write("original"u8));
+        File.WriteAllText(capture.AnnotationPath, """
+            [{"kind":"Text","points":[{"x":45,"y":35}],"argb":4279572252,"size":24,"text":"Lorem ipsum"}]
+            """);
+
+        var original = CaptureStore.LoadEdits(capture);
+        var firstCrop = original.CropTo(new PixelRect(10, 5, 120, 80));
+        var secondCrop = firstCrop.CropTo(new PixelRect(20, 10, 80, 50));
+        CaptureStore.SaveEdits(capture, secondCrop);
+
+        var restored = CaptureStore.LoadEdits(capture);
+        Assert.Null(original.Crop);
+        Assert.Equal(new ImagePoint(45, 35), Assert.Single(Assert.Single(original.Annotations).Points));
+        Assert.Equal(new PixelRect(30, 15, 80, 50), restored.Crop);
+        var mark = Assert.Single(restored.Annotations);
+        Assert.Equal("Lorem ipsum", mark.Text);
+        Assert.Equal(new ImagePoint(15, 20), Assert.Single(mark.Points));
+        Assert.Equal("original", File.ReadAllText(capture.OriginalPath));
     }
 
     [Fact]

@@ -16,6 +16,7 @@ public sealed class CaptureStore(string root)
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        IgnoreReadOnlyProperties = true,
         Converters = { new JsonStringEnumConverter<AnnotationKind>() }
     };
 
@@ -41,25 +42,36 @@ public sealed class CaptureStore(string root)
             .ToArray();
     }
 
-    public static Annotation[] LoadAnnotations(CaptureFile capture)
+    public static CaptureEdits LoadEdits(CaptureFile capture)
     {
         try
         {
             using var stream = File.Open(capture.AnnotationPath, FileMode.Open, FileAccess.Read,
                 FileShare.Read | FileShare.Delete);
-            var annotations = JsonSerializer.Deserialize<Annotation[]>(stream, JsonOptions);
-            if (annotations is null || annotations.Any(annotation => !IsValid(annotation)))
-                throw new InvalidDataException("Invalid annotations.");
-            return annotations;
+            using var document = JsonDocument.Parse(stream);
+            var content = document.RootElement;
+            var edits = content.ValueKind == JsonValueKind.Array
+                ? new CaptureEdits(content.Deserialize<Annotation[]>(JsonOptions)!)
+                : content.Deserialize<CaptureEdits>(JsonOptions);
+            if (edits?.Annotations is null || edits.Annotations.Any(annotation => !IsValid(annotation)) ||
+                edits.Crop is { } crop && (crop.X < 0 || crop.Y < 0 || crop.IsEmpty))
+                throw new InvalidDataException("Invalid screenshot edits.");
+            return edits;
         }
         catch (FileNotFoundException)
         {
-            return [];
+            return new CaptureEdits([]);
         }
     }
 
-    public static void SaveAnnotations(CaptureFile capture, IReadOnlyList<Annotation> annotations) =>
-        WriteFile(capture.AnnotationPath, stream => JsonSerializer.Serialize(stream, annotations, JsonOptions));
+    public static void SaveEdits(CaptureFile capture, CaptureEdits edits) =>
+        WriteFile(capture.AnnotationPath, stream =>
+        {
+            if (edits.Crop is null)
+                JsonSerializer.Serialize(stream, edits.Annotations, JsonOptions);
+            else
+                JsonSerializer.Serialize(stream, edits, JsonOptions);
+        });
 
     public static void WriteFile(string path, Action<Stream> write)
     {
