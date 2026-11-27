@@ -95,7 +95,7 @@ public static class ScreenshotDesktop
             className.Clear();
             GetClassName(window, className, className.Capacity);
             var name = className.ToString();
-            if (name is "ConsoleWindowClass" or "#32770")
+            if (name is "ConsoleWindowClass" or "CASCADIA_HOSTING_WINDOW_CLASS" or "#32770")
             {
                 ShowWindowAsync(window, hide);
                 if (name == "ConsoleWindowClass")

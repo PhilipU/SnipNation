@@ -145,30 +145,42 @@ public partial class ScreenshotApp : Application
     private static async Task SaveDesktop(Window window, string output, string file)
     {
         await Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
-        await Task.Delay(350);
-        var taskbar = RequireVisibleWindow(FindWindow("Shell_TrayWnd", null), "Windows taskbar");
-        RequireVisibleWindow(new WindowInteropHelper(window).Handle, window is GalleryWindow ? "SnipNation gallery" : "SnipNation editor");
-        var primary = DesktopSnapshot.Take().Frames.Single(frame => frame.Bounds.Contains(taskbar));
-        SaveImage(primary.Image, output, file);
+        var handle = new WindowInteropHelper(window).Handle;
+        var name = window is GalleryWindow ? "SnipNation gallery" : "SnipNation editor";
+        const int attempts = 12;
+        for (var attempt = 1; attempt <= attempts; attempt++)
+        {
+            await Task.Delay(450);
+            var problem = VisibilityProblem(FindWindow("Shell_TrayWnd", null), "Windows taskbar", out var taskbar)
+                ?? VisibilityProblem(handle, name, out _);
+            if (problem is null)
+            {
+                var primary = DesktopSnapshot.Take().Frames.Single(frame => frame.Bounds.Contains(taskbar));
+                SaveImage(primary.Image, output, file);
+                return;
+            }
+            if (attempt == attempts)
+                throw new InvalidOperationException(problem);
+        }
     }
 
-    private static PixelPoint RequireVisibleWindow(nint handle, string name)
+    private static string? VisibilityProblem(nint handle, string name, out PixelPoint center)
     {
+        center = default;
         if (handle == 0 || !NativeMethods.IsWindowVisible(handle) || !NativeMethods.GetWindowRect(handle, out var bounds))
-            throw new InvalidOperationException($"The {name} is unavailable.");
+            return $"The {name} is unavailable.";
 
-        var center = new PixelPoint(bounds.Left + (bounds.Right - bounds.Left) / 2,
+        center = new PixelPoint(bounds.Left + (bounds.Right - bounds.Left) / 2,
             bounds.Top + (bounds.Bottom - bounds.Top) / 2);
         const uint rootWindow = 2;
         var screenPoint = new NativeMethods.NativePoint { X = center.X, Y = center.Y };
         var topWindow = GetAncestor(WindowFromPoint(screenPoint), rootWindow);
-        if (topWindow != handle)
-        {
-            var windowClass = new StringBuilder(256);
-            NativeMethods.GetClassName(topWindow, windowClass, windowClass.Capacity);
-            throw new InvalidOperationException($"The {name} is covered by another window ({windowClass}).");
-        }
-        return center;
+        if (topWindow == handle)
+            return null;
+
+        var windowClass = new StringBuilder(256);
+        NativeMethods.GetClassName(topWindow, windowClass, windowClass.Capacity);
+        return $"The {name} is covered by another window ({windowClass}).";
     }
 
     private static void SaveExcerpt(CaptureStore store, BitmapSource page, PixelRect bounds) =>
