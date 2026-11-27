@@ -1,9 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Windows;
-using System.Windows.Automation;
 using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -16,19 +14,6 @@ namespace SnipNation.Editor;
 
 public partial class EditorWindow : Window
 {
-    private static readonly ColorOption[] Palette =
-    [
-        new("Lime green", Brand.Argb("Accent")),
-        new("Dark green", Brand.Argb("LightAccent")),
-        new("Charcoal", Brand.Argb("Background")),
-        new("White", Brand.Argb("Foreground")),
-        new("Light gray", Brand.Argb("Muted")),
-        new("Dark gray", Brand.Argb("LightMuted")),
-        new("Off-white", Brand.Argb("LightBackground"))
-    ];
-    private static readonly double[] StrokeSizes = [2, 4, 6, 10];
-    private static readonly double[] TextSizes = [16, 24, 36, 52];
-
     private readonly CaptureFile _capture;
     private readonly BitmapSource _original;
     private readonly EditorSurface _surface;
@@ -43,15 +28,15 @@ public partial class EditorWindow : Window
     private int _selected = -1;
     private ImagePoint? _anchor;
     private Annotation? _preview;
+    private AnnotationStyle? _gestureStyle;
     private PixelRect? _cropSelection;
-    private uint _color;
-    private double _size;
     private bool _fit = true;
 
-    internal EditorWindow(CaptureFile capture, BitmapSource original, CaptureEdits edits)
+    internal EditorWindow(CaptureFile capture, BitmapSource original, CaptureEdits edits, ToolPresets presets)
     {
         _capture = capture;
         _original = original;
+        _presets = presets;
         _edits = _saved = edits;
         _image = Images.Crop(original, edits.Crop);
         _surface = new EditorSurface(_image) { LayoutTransform = _scale, Cursor = Cursors.Arrow };
@@ -61,6 +46,10 @@ public partial class EditorWindow : Window
         _surface.MouseLeftButtonDown += BeginGesture;
         _surface.MouseMove += MovePointer;
         _surface.MouseLeftButtonUp += EndGesture;
+        var settings = new MenuItem { Header = "Settings" };
+        settings.Click += EditAnnotationStyle;
+        _surface.ContextMenu = new ContextMenu { Items = { settings } };
+        _surface.ContextMenuOpening += AnnotationMenuOpening;
         _surface.LostMouseCapture += (_, _) =>
         {
             if (_anchor is not null && IsCropping)
@@ -68,7 +57,6 @@ public partial class EditorWindow : Window
             ClearGesture();
         };
         Loaded += (_, _) => FitToViewport();
-        SyncStyle();
         UpdateView();
     }
 
@@ -101,10 +89,11 @@ public partial class EditorWindow : Window
             return;
 
         ClearGesture();
+        ClosePresets();
         _tool = Enum.TryParse<AnnotationKind>((string?)((RadioButton)sender).Tag, out var kind) ? kind : null;
+        _activePreset = 0;
         _selected = -1;
         UpdateCursor();
-        SyncStyle();
         UpdateView();
     }
 
@@ -128,16 +117,15 @@ public partial class EditorWindow : Window
         if (!IsCropping && _tool == AnnotationKind.Text)
         {
             if (TextDialog.Edit(this, "") is { Length: > 0 } text)
-                Add(new Annotation(AnnotationKind.Text, [point], _color, _size, text));
+                Add(_presets.Get(AnnotationKind.Text, _activePreset)
+                    .CreateAnnotation(AnnotationKind.Text, [point], _activePreset, text));
             e.Handled = true;
             return;
         }
 
         if (!IsCropping && _tool is null)
         {
-            var cursor = new Point(point.X, point.Y);
-            _selected = Array.FindLastIndex(Annotations, mark => AnnotationGraphics.HitTest(mark, cursor, 5 / _scale.ScaleX));
-            SyncStyle();
+            _selected = FindAnnotation(e.GetPosition(_surface));
             UpdateView();
             if (_selected < 0)
                 return;
@@ -161,6 +149,7 @@ public partial class EditorWindow : Window
             }
             else
             {
+                _gestureStyle = _tool is { } kind ? _presets.Get(kind, _activePreset) : null;
                 _stroke.Add(point);
             }
         }
@@ -212,12 +201,14 @@ public partial class EditorWindow : Window
             var last = _stroke[^1];
             if (Math.Abs(last.X - point.X) >= 0.5 || Math.Abs(last.Y - point.Y) >= 0.5)
                 _stroke.Add(point);
-            _preview = _stroke.Count >= 2 ? new Annotation(kind, _stroke.ToArray(), _color, _size) : null;
+            _preview = _stroke.Count >= 2
+                ? _gestureStyle!.CreateAnnotation(kind, _stroke.ToArray(), _activePreset)
+                : null;
         }
         else
         {
             var valid = kind == AnnotationKind.Highlight ? Math.Abs(dx) >= 1 && Math.Abs(dy) >= 1 : moved;
-            _preview = valid ? new Annotation(kind, [start, point], _color, _size) : null;
+            _preview = valid ? _gestureStyle!.CreateAnnotation(kind, [start, point], _activePreset) : null;
         }
         UpdateView();
     }
@@ -228,6 +219,7 @@ public partial class EditorWindow : Window
             return;
         _anchor = null;
         _preview = null;
+        _gestureStyle = null;
         _stroke.Clear();
         _surface.ReleaseMouseCapture();
         UpdateView();
@@ -244,14 +236,11 @@ public partial class EditorWindow : Window
     private void CropModeChanged(object sender, RoutedEventArgs e)
     {
         ClearGesture();
+        ClosePresets();
         CropActions.Visibility = IsCropping ? Visibility.Visible : Visibility.Collapsed;
         ToolRail.IsEnabled = !IsCropping;
         _cropSelection = null;
-        if (_selected >= 0)
-        {
-            _selected = -1;
-            SyncStyle();
-        }
+        _selected = -1;
         UpdateCursor();
         UpdateView();
     }
@@ -266,80 +255,8 @@ public partial class EditorWindow : Window
             Commit(_edits.CropTo(crop));
     }
 
-    private AnnotationKind? StyledKind => _selected >= 0 ? Annotations[_selected].Kind : _tool;
-
-    private static uint WithOpacity(uint color, AnnotationKind? kind) =>
-        kind == AnnotationKind.Highlight ? (color & 0x00FFFFFF) | 0x66000000 : color;
-
-    private void SyncStyle()
-    {
-        var selected = _selected >= 0 ? Annotations[_selected] : null;
-        var kind = StyledKind;
-        var defaultColor = Brand.Argb(kind == AnnotationKind.Text ? "Background" : "Accent");
-        _color = selected?.Argb ?? WithOpacity(defaultColor, kind);
-        _size = selected?.Size ?? (kind == AnnotationKind.Text ? 24 : 4);
-        ColorButton.IsEnabled = kind is not null;
-        SizeButton.IsEnabled = kind is not null and not AnnotationKind.Highlight;
-    }
-
-    private void ColorClicked(object sender, RoutedEventArgs e)
-    {
-        var menu = new ContextMenu { PlacementTarget = ColorButton, Placement = PlacementMode.Right };
-        foreach (var option in Palette)
-        {
-            var header = new StackPanel { Orientation = Orientation.Horizontal };
-            header.Children.Add(new Border
-            {
-                Width = 14, Height = 14, Background = option.Brush,
-                BorderBrush = Brand.BrushFor("DividerBrush"), BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(2), Margin = new Thickness(0, 0, 8, 0)
-            });
-            header.Children.Add(new TextBlock { Text = option.Name });
-            var color = WithOpacity(option.Argb, StyledKind);
-            AddOption(menu, header, option.Name, color == _color, () =>
-            {
-                _color = color;
-                ApplyStyle();
-            });
-        }
-        menu.IsOpen = true;
-    }
-
-    private void SizeClicked(object sender, RoutedEventArgs e)
-    {
-        var menu = new ContextMenu { PlacementTarget = SizeButton, Placement = PlacementMode.Right };
-        var sizes = StyledKind == AnnotationKind.Text ? TextSizes : StrokeSizes;
-        foreach (var size in sizes.Contains(_size) ? sizes : sizes.Append(_size).Order().ToArray())
-        {
-            var label = FormattableString.Invariant($"{size} px");
-            AddOption(menu, label, label, size == _size, () =>
-            {
-                _size = size;
-                ApplyStyle();
-            });
-        }
-        menu.IsOpen = true;
-    }
-
-    private static void AddOption(ContextMenu menu, object header, string name, bool selected, Action choose)
-    {
-        var item = new MenuItem { Header = header, IsCheckable = true, IsChecked = selected };
-        AutomationProperties.SetName(item, name);
-        if (selected)
-            item.Foreground = Brand.BrushFor("AccentBrush");
-        item.Click += (_, _) => choose();
-        menu.Items.Add(item);
-    }
-
-    private void ApplyStyle()
-    {
-        if (_selected < 0)
-            return;
-        var mark = Annotations[_selected];
-        var styled = mark with { Argb = _color, Size = _size };
-        if (mark != styled)
-            ReplaceSelected(styled);
-    }
+    private int FindAnnotation(Point point) =>
+        Array.FindLastIndex(Annotations, mark => AnnotationGraphics.HitTest(mark, point, 5 / _scale.ScaleX));
 
     private void Add(Annotation annotation) => Commit(_edits with { Annotations = [.. Annotations, annotation] });
 
@@ -357,7 +274,6 @@ public partial class EditorWindow : Window
         var index = _selected;
         _selected = -1;
         Commit(_edits with { Annotations = Annotations.Where((_, position) => position != index).ToArray() });
-        SyncStyle();
     }
 
     private void Commit(CaptureEdits next)
@@ -373,11 +289,11 @@ public partial class EditorWindow : Window
             return;
 
         ClearGesture();
+        ClosePresets();
         CropButton.IsChecked = false;
         destination.Push(_edits);
         _selected = -1;
         SetEdits(previous);
-        SyncStyle();
     }
 
     private void SetEdits(CaptureEdits edits)
@@ -511,13 +427,17 @@ public partial class EditorWindow : Window
         }
         else if (e.Key == Key.Escape)
         {
-            if (IsCropping)
+            if (_presetAnchor is { } anchor)
+            {
+                ClosePresets();
+                anchor.Focus();
+            }
+            else if (IsCropping)
                 ExitCropMode();
             else
             {
                 ClearGesture();
                 _selected = -1;
-                SyncStyle();
                 UpdateView();
             }
         }
@@ -579,10 +499,5 @@ public partial class EditorWindow : Window
     {
         CropButton.IsChecked = false;
         CropButton.Focus();
-    }
-
-    private sealed record ColorOption(string Name, uint Argb)
-    {
-        public Brush Brush { get; } = new SolidColorBrush(AnnotationGraphics.ToColor(Argb));
     }
 }

@@ -20,9 +20,10 @@ Get the Windows installer from [Releases](https://github.com/PhilipU/SnipNation/
 
 1. Press **Print Screen**, or click the SnipNation icon in the system tray and choose **Screenshot**.
 2. Click an outlined window or drag to capture an area. Press **Esc** to cancel.
-3. Paste the screenshot with **Ctrl+V**, or double-click it in the tray gallery. Pick an annotation tool on the left to add arrows, lines, drawings, highlights, or text.
-4. To crop, choose **Crop image** at the top, drag over the area to keep, and press **Enter**.
-5. Press **Ctrl+S** to save your edits. Use **Ctrl+C** to copy the edited image or **Export** to save it as PNG or JPEG.
+3. Paste the screenshot with **Ctrl+V**, or double-click it in the tray gallery to edit it. Select an annotation tool on the left and choose one of its six presets.
+4. Right-click an annotation and choose **Settings** to change its style. Select **Save as default for this preset** to replace the preset for future annotations.
+5. To crop, choose **Crop image** at the top, drag over the area to keep, and press **Enter**.
+6. Press **Ctrl+S** to save your edits. Use **Ctrl+C** to copy the edited image or **Export** to save it as PNG or JPEG.
 
 If **Print Screen** is already in use, right-click the tray icon and choose **Ctrl+Shift+Print Screen** under **Keyboard shortcuts**.
 
@@ -46,5 +47,11 @@ If **Print Screen** is already in use, right-click the tray icon and choose **Ct
 **Highlights and text**
 
 ![Editor with the Text tool selected and a screenshot annotated with a highlight and a text block](https://raw.githubusercontent.com/PhilipU/SnipNation/readme-screenshots/editor-text.png)
+
+**Tool presets**
+
+![Arrow tool with six previews showing different arrowheads, colors, and stroke styles](https://raw.githubusercontent.com/PhilipU/SnipNation/readme-screenshots/presets-arrow.png)
+
+![Highlight tool with six previews showing different colors and opacities](https://raw.githubusercontent.com/PhilipU/SnipNation/readme-screenshots/presets-highlight.png)
 
 [Contributing](CONTRIBUTING.md) · [Security policy](SECURITY.md)

@@ -13,11 +13,16 @@ public sealed record CaptureFile(string DirectoryPath)
 
 public sealed class CaptureStore(string root)
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
+    internal static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         IgnoreReadOnlyProperties = true,
-        Converters = { new JsonStringEnumConverter<AnnotationKind>() }
+        Converters =
+        {
+            new JsonStringEnumConverter<AnnotationKind>(),
+            new JsonStringEnumConverter<StrokePattern>(),
+            new JsonStringEnumConverter<ArrowheadStyle>()
+        }
     };
 
     public CaptureFile SaveCapture(Action<Stream> writePng)
@@ -92,7 +97,7 @@ public sealed class CaptureStore(string root)
     private static bool IsValid(Annotation? annotation)
     {
         if (annotation is null || annotation.Points is null || annotation.Text is null ||
-            !double.IsFinite(annotation.Size) || annotation.Size <= 0 ||
+            !annotation.Style.IsValid || annotation.PresetIndex is < 0 or >= AnnotationPresetStore.SlotCount ||
             annotation.Points.Any(point => !double.IsFinite(point.X) || !double.IsFinite(point.Y)))
             return false;
 

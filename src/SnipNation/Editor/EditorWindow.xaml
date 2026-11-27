@@ -11,74 +11,85 @@
         <Style TargetType="RadioButton" BasedOn="{StaticResource EditorModeButton}" />
         <Style TargetType="ToggleButton" BasedOn="{StaticResource EditorModeButton}" />
     </Window.Resources>
-    <DockPanel Background="{StaticResource PaneBrush}">
-        <Border DockPanel.Dock="Top" BorderBrush="{StaticResource DividerBrush}" BorderThickness="0,0,0,1"
-                Padding="8,4">
-            <StackPanel Orientation="Horizontal">
-                <ToggleButton x:Name="CropButton" Content="{editor:SvgIcon crop}"
-                              ToolTip="Crop image" Checked="CropModeChanged" Unchecked="CropModeChanged" />
-                <StackPanel x:Name="CropActions" Orientation="Horizontal" Visibility="Collapsed">
-                    <Button x:Name="ApplyCropButton" Content="{editor:SvgIcon apply}" IsEnabled="False"
-                            ToolTip="Apply crop (Enter)" Click="ApplyCropClicked" />
-                    <Button Content="{editor:SvgIcon cancel}" ToolTip="Cancel crop (Esc)" Click="CancelCropClicked" />
-                </StackPanel>
-                <Button Content="{editor:SvgIcon export}" ToolTip="Export image as PNG or JPEG" Click="ExportClicked" />
-            </StackPanel>
-        </Border>
-
-        <Border DockPanel.Dock="Bottom" BorderBrush="{StaticResource DividerBrush}" BorderThickness="0,1,0,0"
-                Padding="8,4">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
+    <Grid PreviewMouseDown="EditorMouseDown" SizeChanged="PresetAreaChanged">
+        <DockPanel Background="{StaticResource PaneBrush}">
+            <Border DockPanel.Dock="Top" BorderBrush="{StaticResource DividerBrush}" BorderThickness="0,0,0,1"
+                    Padding="8,4">
                 <StackPanel Orientation="Horizontal">
-                    <Button x:Name="UndoButton" Content="{editor:SvgIcon undo}" ToolTip="Undo (Ctrl+Z)" Click="UndoClicked" />
-                    <Button x:Name="RedoButton" Content="{editor:SvgIcon redo}" ToolTip="Redo (Ctrl+Y)" Click="RedoClicked" />
-                    <Button x:Name="SaveButton" Content="{editor:SvgIcon save}" ToolTip="Save edits (Ctrl+S)" Click="SaveClicked" />
-                    <Button Content="{editor:SvgIcon copy}" ToolTip="Copy image (Ctrl+C)" Click="CopyClicked" />
+                    <ToggleButton x:Name="CropButton" Content="{editor:SvgIcon crop}"
+                                  ToolTip="Crop image" Checked="CropModeChanged" Unchecked="CropModeChanged" />
+                    <StackPanel x:Name="CropActions" Orientation="Horizontal" Visibility="Collapsed">
+                        <Button x:Name="ApplyCropButton" Content="{editor:SvgIcon apply}" IsEnabled="False"
+                                ToolTip="Apply crop (Enter)" Click="ApplyCropClicked" />
+                        <Button Content="{editor:SvgIcon cancel}" ToolTip="Cancel crop (Esc)" Click="CancelCropClicked" />
+                    </StackPanel>
+                    <Button Content="{editor:SvgIcon export}" ToolTip="Export image as PNG or JPEG" Click="ExportClicked" />
                 </StackPanel>
-                <TextBlock x:Name="StatusText" Grid.Column="1" VerticalAlignment="Center" Margin="8,0" Visibility="Collapsed"
-                           Foreground="{StaticResource MutedInkBrush}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
-                <StackPanel Grid.Column="2" Orientation="Horizontal">
-                    <Button Content="{editor:SvgIcon zoom-out}" ToolTip="Zoom out" Click="ZoomOutClicked" />
-                    <Button Content="{editor:SvgIcon fit}" ToolTip="Fit image to window" Click="FitClicked" />
-                    <Button Content="{editor:SvgIcon zoom-in}" ToolTip="Zoom in" Click="ZoomInClicked" />
-                </StackPanel>
-            </Grid>
-        </Border>
-
-        <Border DockPanel.Dock="Left" BorderBrush="{StaticResource DividerBrush}" BorderThickness="0,0,1,0">
-            <ScrollViewer x:Name="ToolRail" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
-                          Padding="6,6" AutomationProperties.Name="Annotation tools">
-                <StackPanel>
-                    <RadioButton GroupName="Tool" Tag="Select" IsChecked="True" Checked="ToolChecked"
-                                 Content="{editor:SvgIcon select}" ToolTip="Select annotation" />
-                    <RadioButton GroupName="Tool" Tag="Arrow" Checked="ToolChecked"
-                                 Content="{editor:SvgIcon arrow}" ToolTip="Arrow" />
-                    <RadioButton GroupName="Tool" Tag="Line" Checked="ToolChecked"
-                                 Content="{editor:SvgIcon line}" ToolTip="Line" />
-                    <RadioButton x:Name="FreehandTool" GroupName="Tool" Tag="Freehand" Checked="ToolChecked"
-                                 Content="{editor:SvgIcon freehand}" ToolTip="Freehand drawing" />
-                    <RadioButton GroupName="Tool" Tag="Highlight" Checked="ToolChecked"
-                                 Content="{editor:SvgIcon highlight}" ToolTip="Highlight" />
-                    <RadioButton x:Name="TextTool" GroupName="Tool" Tag="Text" Checked="ToolChecked"
-                                 Content="{editor:SvgIcon text}" ToolTip="Text" />
-                    <Border Height="1" Margin="5,6" Background="{StaticResource DividerBrush}" />
-                    <Button x:Name="ColorButton" Content="{editor:SvgIcon color}" ToolTip="Annotation color" Click="ColorClicked" />
-                    <Button x:Name="SizeButton" Content="{editor:SvgIcon size}" ToolTip="Annotation size" Click="SizeClicked" />
-                </StackPanel>
-            </ScrollViewer>
-        </Border>
-
-        <ScrollViewer x:Name="Viewport" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
-                      HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
-                      Background="{StaticResource PaneBrush}" ScrollChanged="ViewportChanged">
-            <Border Padding="16">
-                <Decorator x:Name="CanvasHost" />
             </Border>
-        </ScrollViewer>
-    </DockPanel>
+
+            <Border DockPanel.Dock="Bottom" BorderBrush="{StaticResource DividerBrush}" BorderThickness="0,1,0,0"
+                    Padding="8,4">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Orientation="Horizontal">
+                        <Button x:Name="UndoButton" Content="{editor:SvgIcon undo}" ToolTip="Undo (Ctrl+Z)" Click="UndoClicked" />
+                        <Button x:Name="RedoButton" Content="{editor:SvgIcon redo}" ToolTip="Redo (Ctrl+Y)" Click="RedoClicked" />
+                        <Button x:Name="SaveButton" Content="{editor:SvgIcon save}" ToolTip="Save edits (Ctrl+S)" Click="SaveClicked" />
+                        <Button Content="{editor:SvgIcon copy}" ToolTip="Copy image (Ctrl+C)" Click="CopyClicked" />
+                    </StackPanel>
+                    <TextBlock x:Name="StatusText" Grid.Column="1" VerticalAlignment="Center" Margin="8,0" Visibility="Collapsed"
+                               Foreground="{StaticResource MutedInkBrush}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+                    <StackPanel Grid.Column="2" Orientation="Horizontal">
+                        <Button Content="{editor:SvgIcon zoom-out}" ToolTip="Zoom out" Click="ZoomOutClicked" />
+                        <Button Content="{editor:SvgIcon fit}" ToolTip="Fit image to window" Click="FitClicked" />
+                        <Button Content="{editor:SvgIcon zoom-in}" ToolTip="Zoom in" Click="ZoomInClicked" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Border DockPanel.Dock="Left" BorderBrush="{StaticResource DividerBrush}" BorderThickness="0,0,1,0">
+                <ScrollViewer x:Name="ToolRail" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                              ScrollChanged="PresetAreaChanged"
+                              Padding="6,6" AutomationProperties.Name="Annotation tools">
+                    <StackPanel>
+                        <RadioButton x:Name="SelectTool" GroupName="Tool" Tag="Select" IsChecked="True" Checked="ToolChecked"
+                                     Content="{editor:SvgIcon select}" ToolTip="Select annotation" />
+                        <RadioButton x:Name="ArrowTool" GroupName="Tool" Tag="Arrow" Checked="ToolChecked" Click="ToolClicked"
+                                     Content="{editor:SvgIcon arrow}" ToolTip="Arrow" />
+                        <RadioButton x:Name="LineTool" GroupName="Tool" Tag="Line" Checked="ToolChecked" Click="ToolClicked"
+                                     Content="{editor:SvgIcon line}" ToolTip="Line" />
+                        <RadioButton x:Name="FreehandTool" GroupName="Tool" Tag="Freehand" Checked="ToolChecked" Click="ToolClicked"
+                                     Content="{editor:SvgIcon freehand}" ToolTip="Freehand drawing" />
+                        <RadioButton x:Name="HighlightTool" GroupName="Tool" Tag="Highlight" Checked="ToolChecked" Click="ToolClicked"
+                                     Content="{editor:SvgIcon highlight}" ToolTip="Highlight" />
+                        <RadioButton x:Name="TextTool" GroupName="Tool" Tag="Text" Checked="ToolChecked" Click="ToolClicked"
+                                     Content="{editor:SvgIcon text}" ToolTip="Text" />
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+
+            <ScrollViewer x:Name="Viewport" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
+                          HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                          Background="{StaticResource PaneBrush}" ScrollChanged="ViewportChanged">
+                <Border Padding="16">
+                    <Decorator x:Name="CanvasHost" />
+                </Border>
+            </ScrollViewer>
+        </DockPanel>
+        <Canvas x:Name="PresetLayer">
+            <Border x:Name="PresetPanel" Visibility="Collapsed" Padding="5"
+                    CornerRadius="8" BorderThickness="1" BorderBrush="{StaticResource DividerBrush}"
+                    Background="{StaticResource PaneBrush}" KeyboardNavigation.TabNavigation="Cycle"
+                    AutomationProperties.Name="Tool presets">
+                <Border.Effect>
+                    <DropShadowEffect Color="{StaticResource BrandBackground}" BlurRadius="18" ShadowDepth="5" Opacity="0.75" />
+                </Border.Effect>
+                <UniformGrid x:Name="PresetButtons" Columns="3" Rows="2" KeyboardNavigation.DirectionalNavigation="Cycle" />
+            </Border>
+        </Canvas>
+    </Grid>
 </Window>

@@ -14,11 +14,12 @@ public sealed class CaptureStoreTests : IDisposable
         var capture = store.SaveCapture(stream => stream.Write("original"u8));
         Annotation[] annotations =
         [
-            new(AnnotationKind.Arrow, [new(0, 1.5), new(42, 18)], 0xFFDC2633, 4),
+            new(AnnotationKind.Arrow, [new(0, 1.5), new(42, 18)], 0xFFC6FA78, 4,
+                Pattern: StrokePattern.Dashed, Arrowhead: ArrowheadStyle.Open, PresetIndex: 5),
             new(AnnotationKind.Line, [new(1, 2), new(3, 4)], 0xFF2057BA, 4),
             new(AnnotationKind.Freehand, [new(0, 0), new(5, 10), new(8, 12)], 0xFFDC2633, 4),
             new(AnnotationKind.Highlight, [new(120, 40), new(230, 70)], 0x66FFD43B, 4),
-            new(AnnotationKind.Text, [new(30, 90)], 0xFFFFFFFF, 24, "Open\nSave…")
+            new(AnnotationKind.Text, [new(30, 90)], 0xFFFFFFFF, 24, "Open\nSave…", Bold: true, PresetIndex: 0)
         ];
 
         Assert.Empty(CaptureStore.LoadEdits(capture).Annotations);
@@ -55,6 +56,8 @@ public sealed class CaptureStoreTests : IDisposable
         var mark = Assert.Single(restored.Annotations);
         Assert.Equal("Lorem ipsum", mark.Text);
         Assert.Equal(new ImagePoint(15, 20), Assert.Single(mark.Points));
+        Assert.Equal(new AnnotationStyle(0xFF15171C, 24), mark.Style);
+        Assert.Null(mark.PresetIndex);
         Assert.Equal("original", File.ReadAllText(capture.OriginalPath));
     }
 

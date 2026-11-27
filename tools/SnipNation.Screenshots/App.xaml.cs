@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -36,7 +37,9 @@ public partial class ScreenshotApp : Application
             var examples = Directory.CreateTempSubdirectory("snipnation-screenshots-");
             try
             {
-                await Generate(output.FullName, new CaptureStore(examples.FullName), e.Args.Length == 2);
+                var store = new CaptureStore(Path.Combine(examples.FullName, "Captures"));
+                var presets = new ToolPresets(Path.Combine(examples.FullName, "AnnotationPresets"));
+                await Generate(output.FullName, store, presets, e.Args.Length == 2);
             }
             finally
             {
@@ -51,7 +54,7 @@ public partial class ScreenshotApp : Application
         }
     }
 
-    private static async Task Generate(string output, CaptureStore store, bool desktop)
+    private static async Task Generate(string output, CaptureStore store, ToolPresets presets, bool desktop)
     {
         var firstPage = DocumentPage("Lorem ipsum");
         var secondPage = DocumentPage("Dolor sit amet");
@@ -97,14 +100,16 @@ public partial class ScreenshotApp : Application
         }
         gallery.CloseForExit();
 
-        await SaveEditor(drawing, AnnotationKind.Freehand, output, "editor-drawing.png", desktop);
-        await SaveEditor(text, AnnotationKind.Text, output, "editor-text.png", desktop: false);
+        await SaveEditor(drawing, presets, AnnotationKind.Freehand, output, "editor-drawing.png", desktop);
+        await SaveEditor(text, presets, AnnotationKind.Text, output, "editor-text.png", desktop: false);
+        SavePresetPickers(drawing, presets, output);
         SaveCaptureOverlay(firstPage, output);
     }
 
-    private static async Task SaveEditor(CaptureFile capture, AnnotationKind tool, string output, string file, bool desktop)
+    private static async Task SaveEditor(CaptureFile capture, ToolPresets presets, AnnotationKind tool, string output,
+        string file, bool desktop)
     {
-        var editor = new EditorWindow(capture, Images.Read(capture.OriginalPath), CaptureStore.LoadEdits(capture));
+        var editor = new EditorWindow(capture, Images.Read(capture.OriginalPath), CaptureStore.LoadEdits(capture), presets);
         ShowForScreenshot(editor, desktop);
         ((RadioButton)editor.FindName($"{tool}Tool")).IsChecked = true;
         SaveView(editor, output, file);
@@ -117,6 +122,33 @@ public partial class ScreenshotApp : Application
             editor.Top = workArea.Top + (workArea.Height - editor.Height) / 2;
             editor.Activate();
             await SaveDesktop(editor, output, "desktop-editor.png");
+        }
+        editor.Close();
+    }
+
+    private static void SavePresetPickers(CaptureFile capture, ToolPresets presets, string output)
+    {
+        var editor = new EditorWindow(capture, Images.Read(capture.OriginalPath), CaptureStore.LoadEdits(capture), presets);
+        ShowForScreenshot(editor);
+        var panel = (Border)editor.FindName("PresetPanel");
+        var buttons = (UniformGrid)editor.FindName("PresetButtons");
+        foreach (var kind in Enum.GetValues<AnnotationKind>())
+        {
+            var tool = (RadioButton)editor.FindName($"{kind}Tool");
+            tool.IsChecked = true;
+            tool.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+            if (!panel.IsVisible || buttons.Children.Count != AnnotationPresetStore.SlotCount ||
+                buttons.Children.Cast<Button>().Any(button => button.Content is not Image { Source: not null }))
+                throw new InvalidOperationException($"The {kind} tool did not show six preset previews.");
+
+            if (kind == AnnotationKind.Arrow)
+                SaveView(editor, output, "presets-arrow.png");
+            else if (kind == AnnotationKind.Highlight)
+                SaveView(editor, output, "presets-highlight.png");
+
+            ((Button)buttons.Children[1]).RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+            if (panel.IsVisible)
+                throw new InvalidOperationException($"The {kind} preset picker stayed open after selection.");
         }
         editor.Close();
     }
