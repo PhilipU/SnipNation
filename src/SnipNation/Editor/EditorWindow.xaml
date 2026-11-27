@@ -21,11 +21,11 @@
                                  Checked="ToolChecked" Content="Arrow" />
                     <RadioButton Style="{StaticResource EditorTool}" GroupName="Tool" Tag="Line"
                                  Checked="ToolChecked" Content="Line" />
-                    <RadioButton Style="{StaticResource EditorTool}" GroupName="Tool" Tag="Freehand"
+                    <RadioButton x:Name="FreehandTool" Style="{StaticResource EditorTool}" GroupName="Tool" Tag="Freehand"
                                  Checked="ToolChecked" Content="Freehand" />
                     <RadioButton Style="{StaticResource EditorTool}" GroupName="Tool" Tag="Highlight"
                                  Checked="ToolChecked" Content="Highlight" />
-                    <RadioButton Style="{StaticResource EditorTool}" GroupName="Tool" Tag="Text"
+                    <RadioButton x:Name="TextTool" Style="{StaticResource EditorTool}" GroupName="Tool" Tag="Text"
                                  Checked="ToolChecked" Content="Text" />
                     <ComboBox x:Name="ColorPicker" Width="148" Height="30" Margin="8,0,5,3"
                               ToolTip="Color" AutomationProperties.Name="Color" SelectionChanged="StyleChanged">
