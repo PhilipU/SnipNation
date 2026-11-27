@@ -6,9 +6,17 @@
   <img alt="SnipNation — Capture. Edit. Share." src="assets/branding/readme-banner-dark.svg" width="100%">
 </picture>
 
+[![Windows 11](assets/branding/badges/windows-11.svg)](https://github.com/PhilipU/SnipNation/releases)
+![.NET 10](assets/branding/badges/dotnet-10.svg)
+![WPF](assets/branding/badges/wpf.svg)
+[![GPL-3.0](assets/branding/badges/license.svg)](LICENSE)
+[![Build and tests](assets/branding/badges/ci.svg)](https://github.com/PhilipU/SnipNation/actions/workflows/ci.yml)
+
 SnipNation is a screenshot tool for Windows 11. Capture and annotate screenshots for step-by-step guides and quick explanations for your team.
 
 ## Quick start
+
+Get the Windows installer from [Releases](https://github.com/PhilipU/SnipNation/releases).
 
 1. Press **Print Screen**, or click the SnipNation icon in the system tray and choose **Screenshot**.
 2. Click an outlined window or drag to capture an area. Press **Esc** to cancel.
@@ -16,3 +24,5 @@ SnipNation is a screenshot tool for Windows 11. Capture and annotate screenshots
 4. Choose **Save** to keep your edits. Use **Copy** or **Export PNG** to share the annotated image.
 
 If **Print Screen** is already in use, right-click the tray icon and choose **Ctrl+Shift+Print Screen** under **Keyboard shortcuts**.
+
+[Contributing](CONTRIBUTING.md) · [Security policy](SECURITY.md)

@@ -3,7 +3,8 @@
 ## Repository language
 
 - Use English for all repository text, including documentation, code comments, app and installer text, accessibility labels, error messages, logs, scripts, workflow labels, test fixtures, commit messages, and release notes.
-- Keep the README limited to a brief product overview and a short usage guide.
+- Keep the README focused on a brief product overview, badges, current app screenshots, and a short usage guide. Put contribution and development instructions in **CONTRIBUTING.md**.
+- Refresh the affected README screenshots from the current build when the capture, gallery, or editor interface changes. Include the editing modes and follow the screenshot guidance in **CONTRIBUTING.md**.
 
 ## Branding requirements
 
