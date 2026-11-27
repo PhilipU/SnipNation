@@ -1,0 +1,69 @@
+<Window x:Class="SnipNation.Editor.EditorWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="SnipNation" Width="960" Height="660" MinWidth="520" MinHeight="360"
+        WindowStartupLocation="CenterScreen" FontFamily="{StaticResource BrandFont}" FontSize="13"
+        Background="{StaticResource PaneBrush}" Foreground="{StaticResource InkBrush}"
+        Icon="/SnipNation;component/Assets/SnipNation.ico" UseLayoutRounding="True" PreviewKeyDown="EditorKeyDown">
+    <Window.Resources>
+        <Style TargetType="Button" BasedOn="{StaticResource BrandButton}">
+            <Setter Property="Margin" Value="0,0,5,3" />
+        </Style>
+    </Window.Resources>
+    <DockPanel Background="{StaticResource PaneBrush}">
+        <Border DockPanel.Dock="Top" BorderBrush="{StaticResource DividerBrush}" BorderThickness="0,0,0,1"
+                Padding="12,9,12,5">
+            <StackPanel>
+                <WrapPanel>
+                    <RadioButton Style="{StaticResource EditorTool}" GroupName="Tool" Tag="Select"
+                                 IsChecked="True" Checked="ToolChecked" Content="Select" />
+                    <RadioButton Style="{StaticResource EditorTool}" GroupName="Tool" Tag="Arrow"
+                                 Checked="ToolChecked" Content="Arrow" />
+                    <RadioButton Style="{StaticResource EditorTool}" GroupName="Tool" Tag="Line"
+                                 Checked="ToolChecked" Content="Line" />
+                    <RadioButton Style="{StaticResource EditorTool}" GroupName="Tool" Tag="Freehand"
+                                 Checked="ToolChecked" Content="Freehand" />
+                    <RadioButton Style="{StaticResource EditorTool}" GroupName="Tool" Tag="Highlight"
+                                 Checked="ToolChecked" Content="Highlight" />
+                    <RadioButton Style="{StaticResource EditorTool}" GroupName="Tool" Tag="Text"
+                                 Checked="ToolChecked" Content="Text" />
+                    <ComboBox x:Name="ColorPicker" Width="148" Height="30" Margin="8,0,5,3"
+                              ToolTip="Color" AutomationProperties.Name="Color" SelectionChanged="StyleChanged">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <Rectangle Width="13" Height="13" Fill="{Binding Brush}" Stroke="{StaticResource DividerBrush}"
+                                               RadiusX="2" RadiusY="2" Margin="0,0,6,0" />
+                                    <TextBlock Text="{Binding Name}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <ComboBox x:Name="SizePicker" Width="65" Height="30" Margin="0,0,5,3" ToolTip="Size in pixels"
+                              AutomationProperties.Name="Size in pixels" SelectionChanged="StyleChanged" />
+                </WrapPanel>
+                <WrapPanel Margin="0,3,0,0">
+                    <Button x:Name="UndoButton" Content="Undo" Click="UndoClicked" />
+                    <Button x:Name="RedoButton" Content="Redo" Click="RedoClicked" />
+                    <Button x:Name="SaveButton" Content="Save" Click="SaveClicked" Margin="9,0,5,3" />
+                    <Button Content="Copy" Click="CopyClicked" />
+                    <Button Content="Export PNG" Click="ExportClicked" />
+                    <Button Content="−" MinWidth="30" Margin="9,0,3,3" ToolTip="Zoom out"
+                            AutomationProperties.Name="Zoom out" Click="ZoomOutClicked" />
+                    <Button Content="Fit" Margin="0,0,3,3" Click="FitClicked" />
+                    <Button Content="+" MinWidth="30" ToolTip="Zoom in"
+                            AutomationProperties.Name="Zoom in" Click="ZoomInClicked" />
+                </WrapPanel>
+            </StackPanel>
+        </Border>
+        <TextBlock x:Name="StatusText" DockPanel.Dock="Bottom" Margin="12,5" Visibility="Collapsed"
+                   Foreground="{StaticResource MutedInkBrush}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+        <ScrollViewer x:Name="Viewport" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
+                      HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                      Background="{StaticResource PaneBrush}" ScrollChanged="ViewportChanged">
+            <Border Padding="16">
+                <Decorator x:Name="CanvasHost" />
+            </Border>
+        </ScrollViewer>
+    </DockPanel>
+</Window>
