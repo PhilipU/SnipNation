@@ -34,8 +34,6 @@ If **Print Screen** is already in use, right-click the tray icon and choose **Ct
 
 ![SnipNation editor in a window above the Windows 11 taskbar](https://raw.githubusercontent.com/PhilipU/SnipNation/readme-screenshots/desktop-editor.png)
 
-<sub>Used with permission from Microsoft.</sub>
-
 <p>
   <img src="https://raw.githubusercontent.com/PhilipU/SnipNation/readme-screenshots/capture.png" width="500" alt="SnipNation outlining a window for capture">
   <img src="https://raw.githubusercontent.com/PhilipU/SnipNation/readme-screenshots/gallery.png" width="280" alt="SnipNation tray gallery with recent screenshots">
