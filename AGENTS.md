@@ -17,3 +17,8 @@
 
 - Use Ubuntu runners for CI. Build the Windows target with warnings treated as errors and run all solution tests that can run on Ubuntu.
 - Keep **Warning-free build and tests** required on **main** and require pull requests to be up to date before merging. Enable GitHub auto-merge for ready pull requests from branches in this repository.
+
+## Releases
+
+- Use Conventional Commit subjects so Release Please can determine the next version. The changelog and release notes list merged pull requests since the previous release.
+- Run **Actions → Release SnipNation → Run workflow** on **main** to request a release. The workflow runs the required check on the release pull request before merging it. It packages the Windows installer and Velopack update files on Ubuntu before publishing.

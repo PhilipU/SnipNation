@@ -1,0 +1,14 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/v17.6.0/schemas/config.json",
+  "draft": true,
+  "changelog-type": "github",
+  "include-component-in-tag": false,
+  "always-update": true,
+  "pull-request-header": "Prepare the SnipNation release.",
+  "packages": {
+    ".": {
+      "release-type": "simple",
+      "initial-version": "0.1.0"
+    }
+  }
+}

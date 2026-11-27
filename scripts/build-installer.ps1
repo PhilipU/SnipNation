@@ -7,9 +7,6 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) {
-    throw 'The release build requires Windows.'
-}
 
 $repo = Split-Path -Parent $PSScriptRoot
 $project = Join-Path $repo 'src/SnipNation/SnipNation.csproj'
@@ -26,18 +23,22 @@ try {
     & dotnet tool restore
     if ($LASTEXITCODE -ne 0) { throw 'Could not restore Velopack.' }
 
-    & dotnet restore $project --locked-mode
+    & dotnet restore $project --locked-mode -warnaserror
     if ($LASTEXITCODE -ne 0) { throw 'Could not restore release dependencies.' }
 
     $publishArgs = @(
         'publish', $project, '-c', 'Release', '-r', 'win-x64', '--self-contained', 'true', '--no-restore',
-        '-o', $publish, "-p:Version=$Version", '-p:ContinuousIntegrationBuild=true'
+        '-o', $publish, "-p:Version=$Version", '-p:ContinuousIntegrationBuild=true', '-warnaserror'
     )
     & dotnet @publishArgs
     if ($LASTEXITCODE -ne 0) { throw 'The Windows build failed.' }
 
-    $packArgs = @(
-        'vpk', 'pack', '--packId', 'SnipNation', '--packTitle', 'SnipNation', '--packVersion', $Version,
+    $packArgs = @('vpk')
+    if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) {
+        $packArgs += '[win]'
+    }
+    $packArgs += @(
+        'pack', '--packId', 'SnipNation', '--packTitle', 'SnipNation', '--packVersion', $Version,
         '--packDir', $publish, '--mainExe', 'SnipNation.exe', '--runtime', 'win11-x64', '--channel', 'win',
         '--icon', $icon, '--splashImage', $splash, '--splashProgressColor', $palette.accent,
         '--shortcuts', 'StartMenuRoot', '--delta', 'None', '--outputDir', $packages
