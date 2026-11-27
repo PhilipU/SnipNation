@@ -27,8 +27,22 @@ jobs:
           - platform: Ubuntu
             runner: ubuntu-24.04
           - platform: Windows
-            runner: windows-2025
+            runner: windows-11-arm
     steps:
+      - name: Check the Windows desktop session
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Add-Type @'
+          using System;
+          using System.Runtime.InteropServices;
+          public static class DesktopCheck {
+            [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+            public static extern IntPtr FindWindow(string className, string windowName);
+          }
+          '@
+          $taskbar = [DesktopCheck]::FindWindow('Shell_TrayWnd', $null)
+          Write-Output "Interactive: $([Environment]::UserInteractive), session: $((Get-Process -Id $PID).SessionId), taskbar: $taskbar"
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
