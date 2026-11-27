@@ -14,8 +14,10 @@ namespace SnipNation;
 
 public partial class App : Application
 {
-    private readonly CaptureStore _store = new(Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SnipNationData", "Captures"));
+    private static readonly string DataDirectory = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SnipNationData");
+    private readonly CaptureStore _store = new(Path.Combine(DataDirectory, "Captures"));
+    private readonly ToolPresets _presets = new(Path.Combine(DataDirectory, "AnnotationPresets"));
     private readonly Dictionary<CaptureFile, EditorWindow> _editors = [];
     private readonly HashSet<CaptureFile> _opening = [];
     private readonly CancellationTokenSource _stopping = new();
@@ -297,7 +299,7 @@ public partial class App : Application
             if (_exiting)
                 return;
 
-            var editor = new EditorWindow(capture, document.Image, document.Edits);
+            var editor = new EditorWindow(capture, document.Image, document.Edits, _presets);
             editor.Saved += () => _gallery.AddOrUpdate(capture, ReadPreview(capture));
             editor.Closed += (_, _) => _editors.Remove(capture);
             _editors.Add(capture, editor);
