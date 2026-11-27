@@ -38,15 +38,7 @@ jobs:
           cache: true
           cache-dependency-path: '**/packages.lock.json'
       - name: Restore packages
-        run: dotnet restore SnipNation.slnx -warnaserror
-      - name: Save the screenshot tool lock file
-        if: runner.os == 'Windows'
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: screenshot-tool-lock
-          path: tools/SnipNation.Screenshots/packages.lock.json
-          if-no-files-found: error
-          retention-days: 1
+        run: dotnet restore SnipNation.slnx --locked-mode -warnaserror
       - name: Build the solution
         run: dotnet build SnipNation.slnx -c Release --no-restore -warnaserror
       - name: Run tests

@@ -25,4 +25,19 @@ Get the Windows installer from [Releases](https://github.com/PhilipU/SnipNation/
 
 If **Print Screen** is already in use, right-click the tray icon and choose **Ctrl+Shift+Print Screen** under **Keyboard shortcuts**.
 
+## Screenshots
+
+<p>
+  <img src="https://raw.githubusercontent.com/PhilipU/SnipNation/readme-screenshots/capture.png" width="500" alt="SnipNation outlining a window for capture">
+  <img src="https://raw.githubusercontent.com/PhilipU/SnipNation/readme-screenshots/gallery.png" width="280" alt="SnipNation tray gallery with recent screenshots">
+</p>
+
+**Arrows, lines, and freehand**
+
+![Editor with the Freehand tool selected and a screenshot annotated with an arrow, a line, and a freehand outline](https://raw.githubusercontent.com/PhilipU/SnipNation/readme-screenshots/editor-drawing.png)
+
+**Highlights and text**
+
+![Editor with the Text tool selected and a screenshot annotated with a highlight and a text block](https://raw.githubusercontent.com/PhilipU/SnipNation/readme-screenshots/editor-text.png)
+
 [Contributing](CONTRIBUTING.md) · [Security policy](SECURITY.md)

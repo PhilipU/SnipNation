@@ -4,4 +4,4 @@
 
 ## Verification
 
-<!-- List the checks you ran and include refreshed README screenshots when the interface changed. -->
+<!-- List the checks you ran. Review the screenshot artifact when the interface changed. -->

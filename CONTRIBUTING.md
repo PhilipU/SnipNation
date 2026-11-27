@@ -14,4 +14,12 @@ dotnet test SnipNation.slnx -c Release --no-build --no-restore
 
 ## README screenshots
 
-Retake the affected images in `assets/screenshots/` when you change the capture, gallery, or editor interface. Use the current Windows build and example content you can share publicly. Show the toolbar and the resulting annotations in editor screenshots. Replace the existing files and update their README captions when the examples change.
+GitHub Actions renders the capture, gallery, and editor views on Windows. Download **snipnation-screenshots** from a pull request's **Build and test** run to review the current images. Successful builds of `main` publish those images to `readme-screenshots`.
+
+When an interface change affects a screenshot, check the result and update the sample content in `tools/SnipNation.Screenshots` if needed. Use examples you can share publicly. Show the toolbar and the resulting annotations.
+
+To produce the same images on Windows after building, run the following command.
+
+```powershell
+dotnet run --project tools/SnipNation.Screenshots -c Release --no-build --no-restore -- artifacts/screenshots
+```

@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net10.0-windows10.0.22000": {
+      "Velopack": {
+        "type": "Transitive",
+        "resolved": "1.2.161",
+        "contentHash": "OpHNacIumnkhaaX3ZlQ/TCR4YPOJvud2/PAOoWb6o+mIrLwIVA275I5wAgt4q/1O2VrJeDwR1qFQyqzG4lUArg=="
+      },
+      "snipnation": {
+        "type": "Project",
+        "dependencies": {
+          "SnipNation.Core": "[1.0.0, )",
+          "Velopack": "[1.2.161, )"
+        }
+      },
+      "snipnation.core": {
+        "type": "Project"
+      }
+    }
+  }
+}

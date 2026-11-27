@@ -47,6 +47,9 @@ public partial class ScreenshotApp : Application
         var darkGreen = Brand.Argb("LightAccent");
         var lime = Brand.Argb("Accent");
 
+        var general = WorkspaceExample("General", "Automatic backups", "Show tips");
+        store.SaveCapture(stream => Images.SavePng(general, stream));
+
         var drawing = store.SaveCapture(stream => Images.SavePng(notifications, stream));
         CaptureStore.SaveAnnotations(drawing,
         [
@@ -61,7 +64,7 @@ public partial class ScreenshotApp : Application
         var text = store.SaveCapture(stream => Images.SavePng(access, stream));
         CaptureStore.SaveAnnotations(text,
         [
-            new(AnnotationKind.Highlight, [new(47, 108), new(167, 137)], (lime & 0x00FFFFFF) | 0x66000000, 4),
+            new(AnnotationKind.Highlight, [new(47, 108), new(188, 137)], (lime & 0x00FFFFFF) | 0x66000000, 4),
             new(AnnotationKind.Text, [new(48, 258)], Brand.Argb("Background"), 24, "Enable link sharing\nbefore saving.")
         ]);
 

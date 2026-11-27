@@ -4,7 +4,7 @@
 
 - Use English for all repository text, including documentation, code comments, app and installer text, accessibility labels, error messages, logs, scripts, workflow labels, test fixtures, commit messages, and release notes.
 - Keep the README focused on a brief product overview, badges, current app screenshots, and a short usage guide. Put contribution and development instructions in **CONTRIBUTING.md**.
-- Refresh the affected README screenshots from the current build when the capture, gallery, or editor interface changes. Include the editing modes and follow the screenshot guidance in **CONTRIBUTING.md**.
+- Keep the screenshot tool aligned with the capture, gallery, and editor views. Include the editing modes and follow the screenshot guidance in **CONTRIBUTING.md**.
 
 ## Branding requirements
 
@@ -16,7 +16,8 @@
 
 ## Continuous integration
 
-- Use Ubuntu runners for CI. Build the Windows target with warnings treated as errors and run all solution tests that can run on Ubuntu.
+- Use standard GitHub-hosted Ubuntu and Windows runners for CI. Restore locked dependencies, build with warnings treated as errors, and run the solution tests on both platforms.
+- Render README screenshots on Windows and publish them from successful builds of **main** to the **readme-screenshots** branch.
 - Keep **Warning-free build and tests** required on **main** and require pull requests to be up to date before merging. Enable GitHub auto-merge for ready pull requests from branches in this repository.
 
 ## Releases
