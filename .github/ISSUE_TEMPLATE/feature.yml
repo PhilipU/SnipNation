@@ -1,0 +1,16 @@
+name: Feature request
+description: Suggest an improvement to SnipNation
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would you like to do?
+      description: Describe the task or problem you have.
+    validations:
+      required: true
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested change
+      description: Describe how you would like SnipNation to help.

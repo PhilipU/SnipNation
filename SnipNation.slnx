@@ -6,4 +6,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/SnipNation.Core.Tests/SnipNation.Core.Tests.csproj" />
   </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/SnipNation.Screenshots/SnipNation.Screenshots.csproj" />
+  </Folder>
 </Solution>

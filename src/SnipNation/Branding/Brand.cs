@@ -7,7 +7,8 @@ namespace SnipNation.Branding;
 
 internal static class Brand
 {
-    internal static readonly FontFamily FontFamily = new(new Uri("pack://application:,,,/"), "./Assets/Fonts/#Inter");
+    internal static readonly FontFamily FontFamily =
+        new(new Uri("pack://application:,,,/SnipNation;component/"), "./Assets/Fonts/#Inter");
 
     internal static Color ColorFor(string role) => (Color)Application.Current.FindResource($"Brand{role}");
 

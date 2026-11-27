@@ -1,0 +1,25 @@
+name: Bug report
+description: Report a problem in SnipNation
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: SnipNation version
+      description: Include the version or commit you tested.
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: What happened?
+      description: Describe what you expected and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Include relevant Windows, display, or keyboard settings.
+    validations:
+      required: true

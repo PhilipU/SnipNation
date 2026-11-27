@@ -97,6 +97,11 @@ jobs:
         if: steps.pending.outputs.sha == '' && steps.proposal.outputs.prs_created != 'true'
         run: echo 'Release Please found no new release changes.' >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Refresh README screenshots after a release merge
+        if: steps.merge.outputs.sha != ''
+        continue-on-error: true
+        run: gh workflow run ci.yml --repo "$GITHUB_REPOSITORY" --ref main
+
   package:
     name: Package the Windows installer on Ubuntu
     needs: prepare
