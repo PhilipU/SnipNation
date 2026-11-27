@@ -40,7 +40,7 @@ public sealed class CaptureStoreTests : IDisposable
     {
         var capture = new CaptureStore(_root).SaveCapture(stream => stream.Write("original"u8));
         File.WriteAllText(capture.AnnotationPath, """
-            [{"kind":"Text","points":[{"x":45,"y":35}],"argb":4279703324,"size":24,"text":"Lorem ipsum"}]
+            [{"kind":"Text","points":[{"x":45,"y":35}],"argb":4279572252,"size":24,"text":"Lorem ipsum"}]
             """);
 
         var original = CaptureStore.LoadEdits(capture);

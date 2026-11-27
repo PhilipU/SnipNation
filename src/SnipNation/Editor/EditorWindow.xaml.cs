@@ -241,16 +241,18 @@ public partial class EditorWindow : Window
             Math.Clamp(point.Y, 0, _image.PixelHeight - inset));
     }
 
-    private void SetCropMode(bool enabled)
+    private void CropModeChanged(object sender, RoutedEventArgs e)
     {
         ClearGesture();
-        CropButton.IsChecked = enabled;
-        CropActions.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
-        ToolRail.IsEnabled = !enabled;
+        CropActions.Visibility = IsCropping ? Visibility.Visible : Visibility.Collapsed;
+        ToolRail.IsEnabled = !IsCropping;
         _cropSelection = null;
-        _selected = -1;
+        if (_selected >= 0)
+        {
+            _selected = -1;
+            SyncStyle();
+        }
         UpdateCursor();
-        SyncStyle();
         UpdateView();
     }
 
@@ -259,8 +261,7 @@ public partial class EditorWindow : Window
         if (_cropSelection is not { } crop || _anchor is not null)
             return;
 
-        SetCropMode(false);
-        CropButton.Focus();
+        ExitCropMode();
         if (crop != new PixelRect(0, 0, _image.PixelWidth, _image.PixelHeight))
             Commit(_edits.CropTo(crop));
     }
@@ -372,8 +373,7 @@ public partial class EditorWindow : Window
             return;
 
         ClearGesture();
-        if (IsCropping)
-            SetCropMode(false);
+        CropButton.IsChecked = false;
         destination.Push(_edits);
         _selected = -1;
         SetEdits(previous);
@@ -512,7 +512,7 @@ public partial class EditorWindow : Window
         else if (e.Key == Key.Escape)
         {
             if (IsCropping)
-                CancelCrop();
+                ExitCropMode();
             else
             {
                 ClearGesture();
@@ -571,14 +571,13 @@ public partial class EditorWindow : Window
     private void RedoClicked(object sender, RoutedEventArgs e) => Restore(_redo, _undo);
     private void SaveClicked(object sender, RoutedEventArgs e) => Save();
     private async void CopyClicked(object sender, RoutedEventArgs e) => await CopyAsync();
-    private void CropClicked(object sender, RoutedEventArgs e) => SetCropMode(IsCropping);
     private void ApplyCropClicked(object sender, RoutedEventArgs e) => ApplyCrop();
-    private void CancelCropClicked(object sender, RoutedEventArgs e) => CancelCrop();
+    private void CancelCropClicked(object sender, RoutedEventArgs e) => ExitCropMode();
     private void ExportClicked(object sender, RoutedEventArgs e) => Export();
 
-    private void CancelCrop()
+    private void ExitCropMode()
     {
-        SetCropMode(false);
+        CropButton.IsChecked = false;
         CropButton.Focus();
     }
 

@@ -16,7 +16,7 @@
                 Padding="8,4">
             <StackPanel Orientation="Horizontal">
                 <ToggleButton x:Name="CropButton" Content="{editor:SvgIcon crop}"
-                              ToolTip="Crop image" Click="CropClicked" />
+                              ToolTip="Crop image" Checked="CropModeChanged" Unchecked="CropModeChanged" />
                 <StackPanel x:Name="CropActions" Orientation="Horizontal" Visibility="Collapsed">
                     <Button x:Name="ApplyCropButton" Content="{editor:SvgIcon apply}" IsEnabled="False"
                             ToolTip="Apply crop (Enter)" Click="ApplyCropClicked" />

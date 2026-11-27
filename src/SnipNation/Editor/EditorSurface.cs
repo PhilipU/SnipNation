@@ -53,7 +53,7 @@ internal sealed class EditorSurface : FrameworkElement
         if (_cropSelection is { } crop)
         {
             var cropBounds = new Rect(crop.X, crop.Y, crop.Width, crop.Height);
-            var outside = new CombinedGeometry(GeometryCombineMode.Exclude, new RectangleGeometry(new Rect(Width, Height)),
+            var outside = new CombinedGeometry(GeometryCombineMode.Exclude, new RectangleGeometry(new Rect(RenderSize)),
                 new RectangleGeometry(cropBounds));
             context.PushOpacity(0.62);
             context.DrawGeometry(Brand.BrushFor("PaneBrush"), null, outside);
