@@ -43,13 +43,10 @@ jobs:
         run: dotnet build SnipNation.slnx -c Release --no-restore -warnaserror
       - name: Run tests
         run: dotnet test SnipNation.slnx -c Release --no-build --no-restore
-      - name: Prepare the Windows desktop
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: ./tools/SnipNation.Screenshots/PrepareDesktop.ps1
       - name: Generate README screenshots
         if: runner.os == 'Windows'
-        run: dotnet run --project tools/SnipNation.Screenshots -c Release --no-build --no-restore -- artifacts/screenshots --desktop
+        shell: pwsh
+        run: ./tools/SnipNation.Screenshots/CaptureDesktop.ps1
       - name: Upload screenshots
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

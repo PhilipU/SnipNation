@@ -1,9 +1,12 @@
+param([string]$OutputDirectory = 'artifacts/screenshots')
+
 $ErrorActionPreference = 'Stop'
 
 Add-Type @'
 using System;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 
 public static class ScreenshotDesktop
 {
@@ -36,6 +39,9 @@ public static class ScreenshotDesktop
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern int GetClassName(IntPtr window, StringBuilder name, int length);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetWindowText(IntPtr window, StringBuilder title, int length);
 
     [DllImport("user32.dll")]
     private static extern bool ShowWindowAsync(IntPtr window, int command);
@@ -73,16 +79,33 @@ public static class ScreenshotDesktop
             name.ToString() == "Microsoft.Windows.CloudExperienceHost_cw5n1h2txyewy";
     }
 
-    public static void HideBackgroundWindows()
+    public static Timer KeepBackgroundClear()
+    {
+        HideBackgroundWindows();
+        return new Timer(_ => HideBackgroundWindows(), null, 200, 200);
+    }
+
+    private static void HideBackgroundWindows()
     {
         const int hide = 0;
         var className = new StringBuilder(128);
+        var title = new StringBuilder(256);
         EnumWindows((window, _) =>
         {
             className.Clear();
             GetClassName(window, className, className.Capacity);
-            if (className.ToString() is "ConsoleWindowClass" or "#32770")
+            var name = className.ToString();
+            if (name is "ConsoleWindowClass" or "#32770")
+            {
                 ShowWindowAsync(window, hide);
+                if (name == "ConsoleWindowClass")
+                {
+                    title.Clear();
+                    GetWindowText(window, title, title.Capacity);
+                    if (title.ToString().EndsWith(@"\wsl.exe", StringComparison.OrdinalIgnoreCase))
+                        CloseWindow(window);
+                }
+            }
 
             var view = FindWindowEx(window, IntPtr.Zero, "SHELLDLL_DefView", null);
             if (view != IntPtr.Zero)
@@ -120,12 +143,6 @@ if ($topProcess.ProcessName -eq 'WWAHost' -and [ScreenshotDesktop]::IsSetupHost(
     Start-Sleep -Seconds 2
 }
 
-$topWindow = [ScreenshotDesktop]::WindowAt($centerX, $centerY)
-$topProcess = Get-Process -Id ([ScreenshotDesktop]::Owner($topWindow)) -ErrorAction SilentlyContinue
-if ($topProcess.ProcessName -eq 'wsl') {
-    [void][ScreenshotDesktop]::CloseWindow($topWindow)
-}
-
 # Use a plain desktop without third-party shortcuts or wallpaper.
 $palettePath = Join-Path $PSScriptRoot '../../assets/branding/palette.json'
 $hex = (Get-Content $palettePath -Raw | ConvertFrom-Json).lightMuted.TrimStart('#')
@@ -142,6 +159,13 @@ if (![ScreenshotDesktop]::SystemParametersInfo($setWallpaper, 0, '', $saveAndBro
     throw 'Could not set the desktop background.'
 }
 
-[ScreenshotDesktop]::HideBackgroundWindows()
-Start-Sleep -Milliseconds 800
-[ScreenshotDesktop]::DismissStartMenu()
+$desktopCleanup = [ScreenshotDesktop]::KeepBackgroundClear()
+try {
+    Start-Sleep -Milliseconds 800
+    [ScreenshotDesktop]::DismissStartMenu()
+    dotnet run --project $PSScriptRoot -c Release --no-build --no-restore -- $OutputDirectory --desktop
+    exit $LASTEXITCODE
+}
+finally {
+    $desktopCleanup.Dispose()
+}
