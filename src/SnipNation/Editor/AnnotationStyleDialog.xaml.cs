@@ -18,11 +18,13 @@ public partial class AnnotationStyleDialog : Window
 
         var isText = annotation.Kind == AnnotationKind.Text;
         var isHighlight = annotation.Kind == AnnotationKind.Highlight;
+        var textVisibility = isText ? Visibility.Visible : Visibility.Collapsed;
         SizeRow.Visibility = isHighlight ? Visibility.Collapsed : Visibility.Visible;
-        PatternRow.Visibility = isText || isHighlight ? Visibility.Collapsed : Visibility.Visible;
-        ArrowheadRow.Visibility = annotation.Kind == AnnotationKind.Arrow ? Visibility.Visible : Visibility.Collapsed;
+        ArrowShapeRow.Visibility = annotation.Kind == AnnotationKind.Arrow ? Visibility.Visible : Visibility.Collapsed;
         OpacityRow.Visibility = isHighlight ? Visibility.Visible : Visibility.Collapsed;
-        BoldBox.Visibility = isText ? Visibility.Visible : Visibility.Collapsed;
+        FontRow.Visibility = textVisibility;
+        BoldBox.Visibility = textVisibility;
+        OutlineBox.Visibility = textVisibility;
         DefaultBox.Visibility = annotation.PresetIndex.HasValue ? Visibility.Visible : Visibility.Collapsed;
         SizeLabel.Content = isText ? "Font size" : "Width";
 
@@ -37,14 +39,16 @@ public partial class AnnotationStyleDialog : Window
         var widths = sizes.Append(annotation.Size).Distinct().Order();
         SetOptions(SizeBox, widths, annotation.Size, size => FormattableString.Invariant($"{size} px"));
         SetOptions(PatternBox, Enum.GetValues<StrokePattern>(), annotation.Pattern, pattern => pattern.ToString());
-        SetOptions(ArrowheadBox, Enum.GetValues<ArrowheadStyle>(), annotation.Arrowhead, ToolPresets.ArrowheadLabel);
+        SetOptions(ArrowShapeBox, Enum.GetValues<ArrowheadStyle>(), annotation.Arrowhead, ToolPresets.ArrowShapeLabel);
+        SetOptions(FontBox, Enum.GetValues<AnnotationFont>(), annotation.Font, ToolPresets.FontLabel);
         var alpha = (byte)(annotation.Argb >> 24);
         byte[] opacities = [64, 76, 102, 115, 153, 179, 204];
         SetOptions(OpacityBox, opacities.Append(alpha).Distinct().Order(), alpha, ToolPresets.OpacityLabel);
         BoldBox.IsChecked = annotation.Bold;
+        OutlineBox.IsChecked = annotation.Outline;
 
         _ready = true;
-        PreviewImage.Source = AnnotationPreview.Render(annotation.Kind, SelectedStyle);
+        RefreshPreview();
         Loaded += (_, _) => ColorBox.Focus();
     }
 
@@ -58,8 +62,8 @@ public partial class AnnotationStyleDialog : Window
             var rgb = (color?.Argb ?? _annotation.Argb) & 0x00FFFFFF;
             var alpha = SelectedValue(OpacityBox, (byte)(_annotation.Argb >> 24));
             return new AnnotationStyle(rgb | ((uint)alpha << 24), SelectedValue(SizeBox, _annotation.Size),
-                SelectedValue(PatternBox, _annotation.Pattern), SelectedValue(ArrowheadBox, _annotation.Arrowhead),
-                BoldBox.IsChecked == true);
+                SelectedValue(PatternBox, _annotation.Pattern), SelectedValue(ArrowShapeBox, _annotation.Arrowhead),
+                BoldBox.IsChecked == true, SelectedValue(FontBox, _annotation.Font), OutlineBox.IsChecked == true);
         }
     }
 
@@ -74,7 +78,16 @@ public partial class AnnotationStyleDialog : Window
     private void StyleChanged(object sender, RoutedEventArgs e)
     {
         if (_ready)
-            PreviewImage.Source = AnnotationPreview.Render(_annotation.Kind, SelectedStyle);
+            RefreshPreview();
+    }
+
+    private void RefreshPreview()
+    {
+        var style = SelectedStyle;
+        var showsPattern = _annotation.Kind is AnnotationKind.Line or AnnotationKind.Freehand ||
+            (_annotation.Kind == AnnotationKind.Arrow && ToolPresets.UsesStrokePattern(style.Arrowhead));
+        PatternRow.Visibility = showsPattern ? Visibility.Visible : Visibility.Collapsed;
+        PreviewImage.Source = AnnotationPreview.Render(_annotation.Kind, style);
     }
 
     private static void SetOptions<T>(ComboBox box, IEnumerable<T> options, T selected, Func<T, string> label)

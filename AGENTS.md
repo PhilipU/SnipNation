@@ -10,9 +10,10 @@
 
 - Use only the user-supplied **SnipNation-Brand-Kit.zip** for SnipNation branding. This applies to the app, tray icon, installer, documentation, repository images, and any future interfaces.
 - Use the original logos, icons, and banners from the kit. Preserve their proportions and the spelling **SnipNation**. Use the original dark Windows icon in **src/SnipNation/Assets/SnipNation.ico** for the app and installer, and the light and dark banners in **assets/branding** for the README.
-- Use only the colors defined in **assets/branding/palette.json**. The app uses the dark palette with **#15171C**, **#C6FA78**, **#FFFFFF**, and **#A0A0A0**. Use the kit palette for controls, focus indicators, the capture outline, and the default colors for new annotations. Reference app colors through **src/SnipNation/Branding/Palette.xaml**.
-- Use Inter for app typography. The bundled fonts and their license are in **src/SnipNation/Assets/Fonts**.
-- Change the logos, typography, or palette only when the user explicitly supplies an updated kit.
+- Use only the colors defined in **assets/branding/palette.json** for the interface, including controls, focus indicators, and the capture outline. The app uses the dark palette with **#15171C**, **#C6FA78**, **#FFFFFF**, and **#A0A0A0**. Reference interface colors through **src/SnipNation/Branding/Palette.xaml**.
+- Annotation colors are independent of the brand palette. This applies to drawn annotations, their preset previews, and color swatches.
+- Use Inter for interface typography. Text annotations may use other fonts. The bundled Inter fonts and their license are in **src/SnipNation/Assets/Fonts**.
+- Change the logos, interface typography, or interface palette only when the user explicitly supplies an updated kit.
 
 ## Continuous integration
 

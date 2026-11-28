@@ -77,19 +77,24 @@
             <Label x:Name="SizeLabel" Content="Width" Target="{Binding ElementName=SizeBox}" />
             <ComboBox x:Name="SizeBox" SelectionChanged="StyleChanged" />
         </DockPanel>
+        <DockPanel x:Name="ArrowShapeRow" Style="{StaticResource FieldRow}">
+            <Label Content="Arrow shape" Target="{Binding ElementName=ArrowShapeBox}" />
+            <ComboBox x:Name="ArrowShapeBox" SelectionChanged="StyleChanged" />
+        </DockPanel>
         <DockPanel x:Name="PatternRow" Style="{StaticResource FieldRow}">
             <Label Content="Pattern" Target="{Binding ElementName=PatternBox}" />
             <ComboBox x:Name="PatternBox" SelectionChanged="StyleChanged" />
-        </DockPanel>
-        <DockPanel x:Name="ArrowheadRow" Style="{StaticResource FieldRow}">
-            <Label Content="Arrowhead" Target="{Binding ElementName=ArrowheadBox}" />
-            <ComboBox x:Name="ArrowheadBox" SelectionChanged="StyleChanged" />
         </DockPanel>
         <DockPanel x:Name="OpacityRow" Style="{StaticResource FieldRow}">
             <Label Content="Opacity" Target="{Binding ElementName=OpacityBox}" />
             <ComboBox x:Name="OpacityBox" SelectionChanged="StyleChanged" />
         </DockPanel>
+        <DockPanel x:Name="FontRow" Style="{StaticResource FieldRow}">
+            <Label Content="Font" Target="{Binding ElementName=FontBox}" />
+            <ComboBox x:Name="FontBox" SelectionChanged="StyleChanged" />
+        </DockPanel>
         <CheckBox x:Name="BoldBox" Content="Bold text" Checked="StyleChanged" Unchecked="StyleChanged" />
+        <CheckBox x:Name="OutlineBox" Content="Text outline" Checked="StyleChanged" Unchecked="StyleChanged" />
         <CheckBox x:Name="DefaultBox" Content="Save as default for this preset" />
         <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Margin="0,8,0,0">
             <Button Content="{editor:SvgIcon apply}" ToolTip="Apply style" IsDefault="True" Click="ApplyClicked" />
