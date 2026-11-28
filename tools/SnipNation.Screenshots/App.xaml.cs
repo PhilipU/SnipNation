@@ -2,6 +2,7 @@ using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -15,6 +16,9 @@ using SnipNation.Editor;
 using SnipNation.Gallery;
 using SnipNation.Imaging;
 using SnipNation.Windows;
+using Velopack;
+using Velopack.Locators;
+using Velopack.Sources;
 
 namespace SnipNation.Screenshots;
 
@@ -109,7 +113,7 @@ public partial class ScreenshotApp : Application
         gallery.CloseForExit();
 
         var settings = new SettingsWindow(@"C:\Users\Alex\Pictures\SnipNation",
-            @"C:\Users\Alex\AppData\Local\SnipNationData\Captures");
+            @"C:\Users\Alex\AppData\Local\SnipNationData\Captures", UpdateChannel.Stable);
         ShowForScreenshot(settings);
         SaveView(settings, output, "settings.png");
         settings.Close();
@@ -121,7 +125,10 @@ public partial class ScreenshotApp : Application
         SavePresetPickers(guides, presets, output, [AnnotationKind.Frame, AnnotationKind.Number]);
         SaveCaptureOverlay(firstPage, output);
         if (Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true")
+        {
             await VerifyEditorApply(text, presets);
+            await VerifyUpdateChannels(Directory.CreateDirectory(Path.Combine(store.DirectoryPath, "Update test")).FullName);
+        }
     }
 
     private static async Task SaveEditor(CaptureFile capture, ToolPresets presets, AnnotationKind tool, string output,
@@ -170,6 +177,60 @@ public partial class ScreenshotApp : Application
         var colors = new byte[4];
         new FormatConvertedBitmap(image, PixelFormats.Bgra32, null, 0).CopyPixels(pixel, colors, 4, 0);
         return colors;
+    }
+
+    private static async Task VerifyUpdateChannels(string folder)
+    {
+        const string currentStable = "1.2.3";
+        const string nextStable = "1.2.4";
+        const string nextBeta = "1.2.5-beta.42";
+        WriteFeed("win", nextStable);
+        WriteFeed("beta", nextBeta);
+
+        var beta = new VelopackAsset
+        {
+            PackageId = "SnipNation",
+            Version = SemanticVersion.Parse(nextBeta),
+            Type = VelopackAssetType.Full
+        };
+        var stableInstall = new TestVelopackLocator("SnipNation", currentStable, folder,
+            appDir: null, rootDir: null, updateExe: null, channel: "win", localPackage: beta);
+        var updates = new UpdateService(stableInstall, preferred: null);
+        var feeds = new SimpleFileSource(new DirectoryInfo(folder));
+        var stable = await updates.CreateManager(updates.Channel, feeds).CheckForUpdatesAsync();
+        if (updates.Channel != UpdateChannel.Stable || stable?.TargetFullRelease.Version.ToString() != nextStable ||
+            UpdateService.CanAutoApply(stableInstall, preferred: null) ||
+            !UpdateService.CanAutoApply(stableInstall, UpdateChannel.Beta))
+            throw new InvalidOperationException("Stable did not exclude a cached beta unless the user opted in.");
+
+        updates.SelectChannel(UpdateChannel.Beta);
+        var preview = await updates.CreateManager(updates.Channel, feeds).CheckForUpdatesAsync();
+        if (preview?.TargetFullRelease.Version.ToString() != nextBeta)
+            throw new InvalidOperationException("Beta did not select the prerelease from its feed.");
+
+        var betaInstall = new TestVelopackLocator("SnipNation", nextBeta, folder,
+            appDir: null, rootDir: null, updateExe: null, channel: "beta");
+        updates = new UpdateService(betaInstall, preferred: null);
+        if (updates.Channel != UpdateChannel.Beta)
+            throw new InvalidOperationException("The beta installer did not select its update channel.");
+
+        updates.SelectChannel(UpdateChannel.Stable);
+        var rollback = await updates.CreateManager(updates.Channel, feeds).CheckForUpdatesAsync();
+        if (rollback is not { IsDowngrade: true } || rollback.TargetFullRelease.Version.ToString() != nextStable)
+            throw new InvalidOperationException("Switching to Stable did not offer the latest stable package.");
+
+        Console.WriteLine("Verified stable and beta update selection, cached package isolation, and rollback to stable.");
+
+        void WriteFeed(string channel, string version)
+        {
+            var suffix = channel == "win" ? "" : $"-{channel}";
+            var entry = new
+            {
+                PackageId = "SnipNation", Version = version, Type = "Full",
+                FileName = $"SnipNation-{version}{suffix}-full.nupkg"
+            };
+            File.WriteAllText(Path.Combine(folder, $"releases.{channel}.json"), JsonSerializer.Serialize(new { Assets = new[] { entry } }));
+        }
     }
 
     private static void SavePresetPickers(CaptureFile capture, ToolPresets presets, string output,

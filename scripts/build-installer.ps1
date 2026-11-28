@@ -2,11 +2,16 @@
 
 param(
     [Parameter(Mandatory)]
-    [ValidatePattern('^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$')]
-    [string] $Version
+    [ValidatePattern('^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-beta\.[1-9][0-9]*)?$')]
+    [string] $Version,
+    [ValidateSet('win', 'beta')]
+    [string] $Channel = 'win'
 )
 
 $ErrorActionPreference = 'Stop'
+if (($Channel -eq 'beta') -ne ($Version -match '-beta\.')) {
+    throw 'Beta versions must use the beta channel.'
+}
 
 $repo = Split-Path -Parent $PSScriptRoot
 $project = Join-Path $repo 'src/SnipNation/SnipNation.csproj'
@@ -39,14 +44,15 @@ try {
     }
     $packArgs += @(
         'pack', '--packId', 'SnipNation', '--packTitle', 'SnipNation', '--packVersion', $Version,
-        '--packDir', $publish, '--mainExe', 'SnipNation.exe', '--runtime', 'win11-x64', '--channel', 'win',
+        '--packDir', $publish, '--mainExe', 'SnipNation.exe', '--runtime', 'win11-x64', '--channel', $Channel,
         '--icon', $icon, '--splashImage', $splash, '--splashProgressColor', $palette.accent,
         '--shortcuts', 'StartMenuRoot', '--delta', 'None', '--outputDir', $packages
     )
     & dotnet @packArgs
     if ($LASTEXITCODE -ne 0) { throw 'Could not create the installer.' }
 
-    $releaseFiles = @('SnipNation-win-Setup.exe', "SnipNation-$Version-full.nupkg", 'releases.win.json')
+    $channelSuffix = if ($Channel -eq 'win') { '' } else { "-$Channel" }
+    $releaseFiles = @("SnipNation-$Channel-Setup.exe", "SnipNation-$Version$channelSuffix-full.nupkg", "releases.$Channel.json")
     foreach ($file in $releaseFiles) {
         if (-not (Test-Path -LiteralPath (Join-Path $packages $file) -PathType Leaf)) {
             throw "Missing release file $file."

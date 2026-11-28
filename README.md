@@ -16,7 +16,7 @@ SnipNation is a screenshot tool for Windows 11. Capture and annotate screenshots
 
 ## Quick start
 
-Get the Windows installer from [Releases](https://github.com/PhilipU/SnipNation/releases).
+Download the [Stable installer](https://github.com/PhilipU/SnipNation/releases/latest/download/SnipNation-win-Setup.exe).
 
 1. Press **Print Screen**, or click the SnipNation icon in the system tray and choose **Screenshot**.
 2. Click an outlined window or drag to capture an area. Press **Esc** to cancel.
@@ -28,6 +28,8 @@ Get the Windows installer from [Releases](https://github.com/PhilipU/SnipNation/
 Drag with **Frame** to outline an area. With **Numbering**, click to place the next number or drag from the marker to its target. Use **Select** to adjust either end of a connection.
 
 To change the screenshot folder, right-click the tray icon and choose **Settings**. The gallery shows the screenshots in the chosen folder.
+
+Choose **Stable** or **Beta** under **Update channel** in **Settings**. Choose **Restart to update** from the tray menu when an update is ready.
 
 If **Print Screen** is already in use, right-click the tray icon and choose **Ctrl+Shift+Print Screen** under **Keyboard shortcuts**.
 
@@ -44,7 +46,7 @@ If **Print Screen** is already in use, right-click the tray icon and choose **Ct
   <img src="https://raw.githubusercontent.com/PhilipU/SnipNation/readme-screenshots/gallery.png" width="280" alt="SnipNation tray gallery with recent screenshots">
 </p>
 
-![SnipNation settings with the screenshot folder field and Browse button](https://raw.githubusercontent.com/PhilipU/SnipNation/readme-screenshots/settings.png)
+![SnipNation settings showing the screenshot folder and the Stable update channel](https://raw.githubusercontent.com/PhilipU/SnipNation/readme-screenshots/settings.png)
 
 **Arrows, lines, and freehand**
 

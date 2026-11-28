@@ -13,7 +13,7 @@ permissions:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   build:
@@ -119,3 +119,116 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "docs: refresh README screenshots" -m "Source: $GITHUB_SHA"
           git push origin "HEAD:$ref"
+
+  package-beta:
+    name: Build the beta installer
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    needs: validate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: '**/packages.lock.json'
+      - name: Set the beta version
+        id: version
+        shell: bash
+        run: |
+          base=$(jq -er '."."' .release-please-manifest.json)
+          [[ "$base" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ && "$GITHUB_RUN_NUMBER" =~ ^[1-9][0-9]*$ ]]
+          IFS=. read -r major minor patch <<< "$base"
+          printf 'version=%s.%s.%s-beta.%s\n' "$major" "$minor" "$((10#$patch + 1))" "$GITHUB_RUN_NUMBER" >> "$GITHUB_OUTPUT"
+      - name: Package the beta update
+        env:
+          BETA_VERSION: ${{ steps.version.outputs.version }}
+        run: pwsh -NoProfile -File scripts/build-installer.ps1 -Version "$BETA_VERSION" -Channel beta
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: snipnation-beta
+          path: artifacts/releases/${{ steps.version.outputs.version }}
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+
+  publish-beta:
+    name: Publish the beta release
+    if: github.ref == 'refs/heads/main'
+    needs: [package-beta, publish-screenshots]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      BETA_VERSION: ${{ needs.package-beta.outputs.version }}
+      BETA_TAG_PATTERN: '^beta-v[0-9]+\.[0-9]+\.[0-9]+-beta\.[1-9][0-9]*$'
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: snipnation-beta
+          path: release-assets
+      - name: Publish the beta for the tested commit
+        shell: bash
+        run: |
+          main=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)
+          if [[ "$main" != "$GITHUB_SHA" ]]; then
+            echo "A newer commit is on main."
+            exit 0
+          fi
+
+          tag="beta-v$BETA_VERSION"
+          [[ "$tag" =~ $BETA_TAG_PATTERN ]]
+          releases=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" | jq -cs 'add // []')
+          existing=$(jq -c --arg tag "$tag" 'first(.[] | select(.tag_name == $tag)) // empty' <<< "$releases")
+          if [[ -n "$existing" ]]; then
+            jq -e --arg sha "$GITHUB_SHA" '.prerelease and .target_commitish == $sha' <<< "$existing" > /dev/null
+          else
+            previous=$(jq -r --arg pattern "$BETA_TAG_PATTERN" '
+              [.[] | select(.draft == false and .prerelease and (.tag_name | test($pattern)))] |
+              sort_by(.tag_name | split(".") | last | tonumber) | last | .tag_name // empty
+            ' <<< "$releases")
+            if [[ -n "$previous" && "${previous##*.}" -gt "$GITHUB_RUN_NUMBER" ]]; then
+              echo "A newer beta has already been published."
+              exit 0
+            fi
+            if [[ -z "$previous" ]]; then
+              previous=$(jq -r '[.[] | select(.draft == false and .prerelease == false)] |
+                sort_by(.published_at) | last | .tag_name // empty' <<< "$releases")
+            fi
+            notes_args=()
+            if [[ -n "$previous" ]]; then
+              notes_args+=(--notes-start-tag "$previous")
+            fi
+            gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+              --draft --prerelease --latest=false --title "SnipNation $BETA_VERSION" \
+              --notes "[Windows and Ubuntu CI]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)" \
+              --generate-notes "${notes_args[@]}"
+          fi
+
+          if [[ -z "$existing" ]] || jq -e '.draft' <<< "$existing" > /dev/null; then
+            gh release upload "$tag" --repo "$GITHUB_REPOSITORY" --clobber \
+              release-assets/SnipNation-beta-Setup.exe \
+              "release-assets/SnipNation-$BETA_VERSION-beta-full.nupkg" \
+              release-assets/releases.beta.json
+            gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --draft=false --latest=false
+          fi
+
+          obsolete=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" | jq -rs --arg pattern "$BETA_TAG_PATTERN" '
+            [.[][] | select(.draft == false and .prerelease and (.tag_name | test($pattern)))] |
+            sort_by(.tag_name | split(".") | last | tonumber) | reverse | .[5:][] | .tag_name
+          ')
+          while IFS= read -r old_tag; do
+            if [[ -n "$old_tag" ]]; then
+              gh release delete "$old_tag" --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes
+            fi
+          done <<< "$obsolete"
+
+          printf '[SnipNation %s](%s/%s/releases/tag/%s) is available.\n' \
+            "$BETA_VERSION" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$tag" >> "$GITHUB_STEP_SUMMARY"
