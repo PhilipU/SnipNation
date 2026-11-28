@@ -33,10 +33,11 @@ internal sealed class ScreenshotTools(Dispatcher dispatcher)
     public Task<CallToolResult> ListCaptureTargets(CancellationToken cancellationToken) => OnDesktop(() =>
     {
         var foreground = NativeMethods.GetForegroundWindow();
+        var displays = DesktopSnapshot.Displays();
         return McpHost.Result(new
         {
-            Displays = DesktopSnapshot.Displays(),
-            Windows = DesktopSnapshot.VisibleWindows().Select(window => new
+            Displays = displays,
+            Windows = DesktopSnapshot.VisibleWindows(displays).Select(window => new
             {
                 window.Id, Title = window.ReadTitle(), window.Bounds, Foreground = window.Handle == foreground
             }).ToArray()

@@ -126,6 +126,7 @@ public partial class ScreenshotApp : Application
         SaveCaptureOverlay(firstPage, output);
         if (Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true")
         {
+            await VerifyWindowSnap();
             await VerifyEditorApply(text, presets);
             await VerifyUpdateChannels(Directory.CreateDirectory(Path.Combine(store.DirectoryPath, "Update test")).FullName);
         }
@@ -149,6 +150,68 @@ public partial class ScreenshotApp : Application
             await SaveDesktop(editor, output, "desktop-editor.png");
         }
         editor.Close();
+    }
+
+    private static async Task VerifyWindowSnap()
+    {
+        const int visiblePopup = unchecked((int)0x90000000);
+        const int topmostToolWindow = 0x88;
+        const int transparentStyle = 0x20;
+        var display = DesktopSnapshot.Displays().Single(item => item.Primary).Bounds;
+        var mainSettings = new HwndSourceParameters("Window snap test", 360, 240)
+        {
+            WindowStyle = visiblePopup,
+            ExtendedWindowStyle = topmostToolWindow,
+            PositionX = display.X + 40,
+            PositionY = display.Y + 40
+        };
+        using var main = new HwndSource(mainSettings) { RootVisual = new Border { Background = Brushes.CornflowerBlue } };
+        var popupSettings = new HwndSourceParameters("", 160, 100)
+        {
+            WindowStyle = visiblePopup,
+            ExtendedWindowStyle = topmostToolWindow | transparentStyle,
+            ParentWindow = main.Handle,
+            PositionX = mainSettings.PositionX + 100,
+            PositionY = mainSettings.PositionY + 70
+        };
+        using var popup = new HwndSource(popupSettings) { RootVisual = new Border { Background = Brushes.Gold } };
+        await Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
+        await Task.Delay(450);
+
+        var snapshot = DesktopSnapshot.Take();
+        var mainBounds = snapshot.Windows.FirstOrDefault(window => window.Handle == main.Handle)?.Bounds
+            ?? throw new InvalidOperationException("The main window is missing from the capture targets.");
+        var popupBounds = snapshot.Windows.FirstOrDefault(window => window.Handle == popup.Handle)?.Bounds
+            ?? throw new InvalidOperationException("The visible owned pop-up is missing from the capture targets.");
+        var selection = new CaptureSelection(snapshot.Bounds, snapshot.Windows.Select(window => window.Bounds).ToArray());
+        var mainPoint = new PixelPoint(mainSettings.PositionX + 30, mainSettings.PositionY + 30);
+        var popupPoint = new PixelPoint(popupSettings.PositionX + 80, popupSettings.PositionY + 50);
+
+        selection.Move(popupPoint);
+        if (selection.Highlight != popupBounds)
+            throw new InvalidOperationException("Hovering over the pop-up did not outline the pop-up.");
+        selection.Press(popupPoint, 4);
+        if (selection.Release(popupPoint) is not { } popupArea || popupArea != popupBounds)
+            throw new InvalidOperationException("Clicking the pop-up did not capture its bounds.");
+
+        selection.Move(mainPoint);
+        if (selection.Confirm() is not { } mainArea || mainArea != mainBounds)
+            throw new InvalidOperationException("Confirming over the exposed main window did not capture its full bounds.");
+
+        var mainImage = snapshot.Crop(mainArea);
+        var popupImage = snapshot.Crop(popupArea);
+        if (!HasColor(mainImage, mainArea, mainPoint, Colors.CornflowerBlue) ||
+            !HasColor(mainImage, mainArea, popupPoint, Colors.Gold) ||
+            !HasColor(popupImage, popupArea, popupPoint, Colors.Gold))
+            throw new InvalidOperationException("The crops did not preserve the visible main window and pop-up pixels.");
+
+        Console.WriteLine("Verified window snapping and crop pixels for an overlapping main window and owned pop-up.");
+
+        static bool HasColor(BitmapSource image, PixelRect area, PixelPoint point, Color color)
+        {
+            var pixel = ReadPixel(image, new Int32Rect(point.X - area.X, point.Y - area.Y, 1, 1));
+            return pixel[0] == color.B && pixel[1] == color.G && pixel[2] == color.R;
+        }
     }
 
     private static async Task VerifyEditorApply(CaptureFile capture, ToolPresets presets)

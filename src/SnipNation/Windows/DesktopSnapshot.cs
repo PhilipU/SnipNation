@@ -38,8 +38,8 @@ internal sealed class DesktopSnapshot(MonitorFrame[] frames, IReadOnlyList<Deskt
     {
         // The gallery has been hidden. Wait for the compositor before reading the desktop.
         DwmFlush();
-        var windows = VisibleWindows();
         var displays = Displays();
+        var windows = VisibleWindows(displays);
         var frames = new List<MonitorFrame>(displays.Length);
 
         var desktop = GetDC(0);
@@ -147,17 +147,15 @@ internal sealed class DesktopSnapshot(MonitorFrame[] frames, IReadOnlyList<Deskt
         .Where(display => !display.Bounds.IsEmpty)
         .ToArray();
 
-    internal static IReadOnlyList<DesktopWindow> VisibleWindows()
+    internal static IReadOnlyList<DesktopWindow> VisibleWindows(IReadOnlyList<DesktopDisplay> displays)
     {
-        const int extendedStyleIndex = -20;
-        const int transparentStyle = 0x20;
         var shell = GetShellWindow();
-        var windows = new List<DesktopWindow>();
+        var candidates = new Dictionary<nint, DesktopWindow>();
         var className = new StringBuilder(256);
-        EnumWindows((window, _) =>
+        EnumDesktopWindows(0, (window, _) =>
         {
             if (window == shell || !IsWindowVisible(window) || IsIconic(window) ||
-                (GetWindowLong(window, extendedStyleIndex) & transparentStyle) != 0 ||
+                IsFullyTransparent(window) ||
                 (DwmGetWindowAttribute(window, Cloaked, out int cloaked, sizeof(int)) == 0 && cloaked != 0))
                 return true;
 
@@ -166,16 +164,43 @@ internal sealed class DesktopSnapshot(MonitorFrame[] frames, IReadOnlyList<Deskt
             if (className.ToString() is "Progman" or "WorkerW" or "Shell_TrayWnd" or "Shell_SecondaryTrayWnd")
                 return true;
 
-            if (DwmGetWindowAttribute(window, ExtendedFrameBounds, out NativeRect bounds, Marshal.SizeOf<NativeRect>()) != 0 &&
-                !GetWindowRect(window, out bounds))
-                return true;
-
-            var rect = bounds.ToPixels();
-            if (!rect.IsEmpty)
-                windows.Add(new DesktopWindow(window, rect));
+            var bounds = WindowBounds(window);
+            if (displays.Any(display => !bounds.Intersect(display.Bounds).IsEmpty))
+                candidates[window] = new DesktopWindow(window, bounds);
             return true;
         }, 0);
+
+        // Walk the desktop from front to back. Track handles in case the order changes during the walk.
+        var windows = new List<DesktopWindow>(candidates.Count);
+        var visited = new HashSet<nint>();
+        for (var window = GetTopWindow(0); window != 0 && candidates.Count != 0 && visited.Add(window);
+             window = GetWindow(window, NextWindow))
+        {
+            if (candidates.Remove(window, out var candidate))
+                windows.Add(candidate);
+        }
+        windows.AddRange(candidates.Values);
         return windows;
+    }
+
+    private static bool IsFullyTransparent(nint window)
+    {
+        const int extendedStyleIndex = -20;
+        const int layeredStyle = 0x00080000;
+        const uint uniformOpacity = 0x2;
+        // Click-through windows can draw visible content. Exclude windows with zero uniform opacity.
+        return (GetWindowLong(window, extendedStyleIndex) & layeredStyle) != 0 &&
+            GetLayeredWindowAttributes(window, out _, out var opacity, out var flags) &&
+            (flags & uniformOpacity) != 0 && opacity == 0;
+    }
+
+    private static PixelRect WindowBounds(nint window)
+    {
+        if (DwmGetWindowAttribute(window, ExtendedFrameBounds, out NativeRect frame, Marshal.SizeOf<NativeRect>()) == 0 &&
+            frame.ToPixels() is { IsEmpty: false } bounds)
+            return bounds;
+
+        return GetWindowRect(window, out var rect) ? rect.ToPixels() : default;
     }
 
     private static Int32Rect ToInt32Rect(PixelRect pixels) => new(pixels.X, pixels.Y, pixels.Width, pixels.Height);
