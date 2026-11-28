@@ -31,3 +31,9 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 
 [Velopack source code and license](https://github.com/velopack/velopack)
+
+## MCP SDK
+
+SnipNation uses ModelContextProtocol.Core 2.4.0. The upstream Apache 2.0 and MIT licensing terms are included under **licenses/ModelContextProtocol**. [MCP SDK source](https://github.com/modelcontextprotocol/csharp-sdk/tree/v2.4.0), [License](src/SnipNation/Licenses/ModelContextProtocol/LICENSE.txt)
+
+The MCP SDK dependencies Microsoft.Extensions.AI.Abstractions, Microsoft.Extensions.Logging.Abstractions, and Microsoft.Extensions.DependencyInjection.Abstractions are distributed under MIT. Their licenses are included under **licenses/Microsoft.Extensions.AI** and **licenses/Microsoft.Extensions**. [.NET Extensions source](https://github.com/dotnet/extensions), [.NET Runtime source](https://github.com/dotnet/runtime)

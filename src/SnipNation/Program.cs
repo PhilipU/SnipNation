@@ -1,3 +1,4 @@
+using SnipNation.Mcp;
 using SnipNation.Windows;
 using Velopack;
 using Velopack.Locators;
@@ -7,8 +8,11 @@ namespace SnipNation;
 internal static class Program
 {
     [STAThread]
-    public static int Main()
+    public static int Main(string[] args)
     {
+        if (args is ["--mcp"])
+            return McpHost.Run();
+
         using var instance = new Mutex(false, @"Local\SnipNation", out var primary);
         var locator = VelopackLocator.CreateDefaultForPlatform();
 

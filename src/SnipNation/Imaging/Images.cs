@@ -78,6 +78,13 @@ internal static class Images
     internal static void SaveJpeg(BitmapSource image, Stream stream) =>
         Encode(image, stream, new JpegBitmapEncoder { QualityLevel = 92 });
 
+    internal static Action<BitmapSource, Stream>? EncoderFor(string path) => Path.GetExtension(path).ToLowerInvariant() switch
+    {
+        ".png" => SavePng,
+        ".jpg" or ".jpeg" => SaveJpeg,
+        _ => null
+    };
+
     private static void Encode(BitmapSource image, Stream stream, BitmapEncoder encoder)
     {
         encoder.Frames.Add(BitmapFrame.Create(image));
@@ -96,6 +103,12 @@ internal static class Images
 
     internal static BitmapSource Compose(BitmapSource image, IReadOnlyList<Annotation> annotations) =>
         annotations.Count == 0 ? image : Render(image, annotations, 1);
+
+    internal static BitmapSource Preview(BitmapSource image, IReadOnlyList<Annotation> annotations, int maxDimension)
+    {
+        var scale = (double)maxDimension / Math.Max(image.PixelWidth, image.PixelHeight);
+        return scale >= 1 ? Compose(image, annotations) : Render(image, annotations, scale);
+    }
 
     private static BitmapSource Render(BitmapSource image, IReadOnlyList<Annotation> annotations, double scale)
     {

@@ -33,6 +33,8 @@ Choose **Stable** or **Beta** under **Update channel** in **Settings**. Choose *
 
 If **Print Screen** is already in use, right-click the tray icon and choose **Ctrl+Shift+Print Screen** under **Keyboard shortcuts**.
 
+Use a local MCP client to capture, annotate, and export screenshots for a guide. [Connect SnipNation to an MCP client](MCP.md)
+
 ## Screenshots
 
 **On the Microsoft Windows 11 desktop**

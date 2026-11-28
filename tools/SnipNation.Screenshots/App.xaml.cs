@@ -134,7 +134,7 @@ public partial class ScreenshotApp : Application
     private static async Task SaveEditor(CaptureFile capture, ToolPresets presets, AnnotationKind tool, string output,
         string file, bool desktop)
     {
-        var editor = new EditorWindow(capture, Images.Read(capture.OriginalPath), CaptureStore.LoadEdits(capture), presets);
+        var editor = new EditorWindow(capture, Images.Read(capture.OriginalPath), CaptureStore.ReadEdits(capture), presets);
         ShowForScreenshot(editor, desktop);
         ((RadioButton)editor.FindName($"{tool}Tool")).IsChecked = true;
         SaveView(editor, output, file);
@@ -153,10 +153,11 @@ public partial class ScreenshotApp : Application
 
     private static async Task VerifyEditorApply(CaptureFile capture, ToolPresets presets)
     {
-        var edits = CaptureStore.LoadEdits(capture);
+        var document = CaptureStore.ReadEdits(capture);
+        var edits = document.Edits;
         var original = Images.Read(capture.OriginalPath);
         var expected = Images.Compose(Images.Crop(original, edits.Crop), edits.Annotations);
-        var editor = new EditorWindow(capture, original, edits, presets);
+        var editor = new EditorWindow(capture, original, document, presets);
         var closed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         editor.Closed += (_, _) => closed.SetResult();
         ShowForScreenshot(editor);
@@ -236,7 +237,7 @@ public partial class ScreenshotApp : Application
     private static void SavePresetPickers(CaptureFile capture, ToolPresets presets, string output,
         IEnumerable<AnnotationKind> kinds)
     {
-        var edits = CaptureStore.LoadEdits(capture);
+        var edits = CaptureStore.ReadEdits(capture);
         var editor = new EditorWindow(capture, Images.Read(capture.OriginalPath), edits, presets);
         ShowForScreenshot(editor);
         var panel = (Border)editor.FindName("PresetPanel");
@@ -274,7 +275,7 @@ public partial class ScreenshotApp : Application
 
             if (kind is AnnotationKind.Frame or AnnotationKind.Number)
             {
-                var mark = edits.Annotations.First(annotation => annotation.Kind == kind);
+                var mark = edits.Edits.Annotations.First(annotation => annotation.Kind == kind);
                 var settings = new AnnotationStyleDialog(editor, mark);
                 if (settings.SelectedStyle != mark.Style || settings.Number != mark.Number)
                     throw new InvalidOperationException($"The {kind} settings did not load the saved annotation.");

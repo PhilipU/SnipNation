@@ -24,6 +24,7 @@ public partial class EditorWindow : Window
     private BitmapSource _image;
     private CaptureEdits _edits;
     private CaptureEdits _saved;
+    private string _savedRevision;
     private AnnotationKind? _tool;
     private int _selected = -1;
     private ImagePoint? _anchor;
@@ -35,13 +36,14 @@ public partial class EditorWindow : Window
     private bool _fit = true;
     private bool _applying;
 
-    internal EditorWindow(CaptureFile capture, BitmapSource original, CaptureEdits edits, ToolPresets presets)
+    internal EditorWindow(CaptureFile capture, BitmapSource original, SavedCaptureEdits document, ToolPresets presets)
     {
         _capture = capture;
         _original = original;
         _presets = presets;
-        _edits = _saved = edits;
-        _image = Images.Crop(original, edits.Crop);
+        _edits = _saved = document.Edits;
+        _savedRevision = document.Revision;
+        _image = Images.Crop(original, _edits.Crop);
         _surface = new EditorSurface(_image) { LayoutTransform = _scale, Cursor = Cursors.Arrow };
         InitializeComponent();
 
@@ -365,12 +367,17 @@ public partial class EditorWindow : Window
 
         try
         {
-            CaptureStore.SaveEdits(_capture, _edits);
+            _savedRevision = CaptureStore.SaveEdits(_capture, _edits, _savedRevision);
             _saved = _edits;
             SetStatus(null);
             UpdateView();
             Saved?.Invoke();
             return true;
+        }
+        catch (CaptureEditConflictException)
+        {
+            SetStatus("This screenshot was edited elsewhere. Reopen it to load the saved edits.");
+            return false;
         }
         catch (Exception error) when (Images.IsFileError(error))
         {
@@ -417,12 +424,7 @@ public partial class EditorWindow : Window
                 SetStatus("Choose a different name for the exported image.");
                 return;
             }
-            Action<BitmapSource, Stream>? encode = Path.GetExtension(path).ToLowerInvariant() switch
-            {
-                ".png" => Images.SavePng,
-                ".jpg" or ".jpeg" => Images.SaveJpeg,
-                _ => null
-            };
+            var encode = Images.EncoderFor(path);
             if (encode is null)
             {
                 SetStatus("Use a .png, .jpg, or .jpeg file name.");

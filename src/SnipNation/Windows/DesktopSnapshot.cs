@@ -10,14 +10,28 @@ using static SnipNation.Windows.NativeMethods;
 
 namespace SnipNation.Windows;
 
-internal sealed record MonitorFrame(PixelRect Bounds, BitmapSource Image);
+internal sealed record MonitorFrame(PixelRect Bounds, BitmapSource Image, string DisplayId = "");
 
-internal sealed class DesktopSnapshot(MonitorFrame[] frames, IReadOnlyList<PixelRect> windows)
+internal sealed record DesktopDisplay(string Id, PixelRect Bounds, bool Primary);
+
+internal sealed record DesktopWindow(nint Handle, PixelRect Bounds)
+{
+    internal string Id => $"0x{(nuint)Handle:X}";
+
+    internal string ReadTitle()
+    {
+        var title = new StringBuilder(512);
+        GetWindowText(Handle, title, title.Capacity);
+        return title.ToString();
+    }
+}
+
+internal sealed class DesktopSnapshot(MonitorFrame[] frames, IReadOnlyList<DesktopWindow> windows)
 {
     private const int BytesPerPixel = 4;
 
     internal IReadOnlyList<MonitorFrame> Frames => frames;
-    internal IReadOnlyList<PixelRect> Windows => windows;
+    internal IReadOnlyList<DesktopWindow> Windows => windows;
     internal PixelRect Bounds { get; } = frames.Select(frame => frame.Bounds).Aggregate((a, b) => a.Enclose(b));
 
     internal static DesktopSnapshot Take()
@@ -25,8 +39,8 @@ internal sealed class DesktopSnapshot(MonitorFrame[] frames, IReadOnlyList<Pixel
         // The gallery has been hidden. Wait for the compositor before reading the desktop.
         DwmFlush();
         var windows = VisibleWindows();
-        var screens = Screen.AllScreens;
-        var frames = new List<MonitorFrame>(screens.Length);
+        var displays = Displays();
+        var frames = new List<MonitorFrame>(displays.Length);
 
         var desktop = GetDC(0);
         if (desktop == 0)
@@ -34,13 +48,8 @@ internal sealed class DesktopSnapshot(MonitorFrame[] frames, IReadOnlyList<Pixel
 
         try
         {
-            foreach (var screen in screens)
-            {
-                var bounds = screen.Bounds;
-                var pixels = new PixelRect(bounds.X, bounds.Y, bounds.Width, bounds.Height);
-                if (!pixels.IsEmpty)
-                    frames.Add(new MonitorFrame(pixels, ReadMonitor(desktop, pixels)));
-            }
+            foreach (var display in displays)
+                frames.Add(new MonitorFrame(display.Bounds, ReadMonitor(desktop, display.Bounds), display.Id));
         }
         finally
         {
@@ -130,12 +139,20 @@ internal sealed class DesktopSnapshot(MonitorFrame[] frames, IReadOnlyList<Pixel
         return image;
     }
 
-    private static IReadOnlyList<PixelRect> VisibleWindows()
+    internal static DesktopDisplay[] Displays() => Screen.AllScreens.Select(screen =>
+        {
+            var bounds = screen.Bounds;
+            return new DesktopDisplay(screen.DeviceName, new PixelRect(bounds.X, bounds.Y, bounds.Width, bounds.Height), screen.Primary);
+        })
+        .Where(display => !display.Bounds.IsEmpty)
+        .ToArray();
+
+    internal static IReadOnlyList<DesktopWindow> VisibleWindows()
     {
         const int extendedStyleIndex = -20;
         const int transparentStyle = 0x20;
         var shell = GetShellWindow();
-        var windows = new List<PixelRect>();
+        var windows = new List<DesktopWindow>();
         var className = new StringBuilder(256);
         EnumWindows((window, _) =>
         {
@@ -155,7 +172,7 @@ internal sealed class DesktopSnapshot(MonitorFrame[] frames, IReadOnlyList<Pixel
 
             var rect = bounds.ToPixels();
             if (!rect.IsEmpty)
-                windows.Add(rect);
+                windows.Add(new DesktopWindow(window, rect));
             return true;
         }, 0);
         return windows;

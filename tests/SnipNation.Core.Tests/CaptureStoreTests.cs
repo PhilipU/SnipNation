@@ -123,5 +123,46 @@ public sealed class CaptureStoreTests : IDisposable
         Assert.Equal(previous, Assert.Single(new CaptureStore(defaultFolder).Recent(36)));
     }
 
+    [Fact]
+    public async Task ConcurrentEditsDoNotOverwriteASavedRevision()
+    {
+        var store = new CaptureStore(_root);
+        var capture = store.SaveCapture(stream => stream.Write("original"u8));
+        var original = CaptureStore.ReadEdits(capture);
+        PixelRect[] crops = [new(0, 0, 100, 100), new(1, 1, 80, 80)];
+
+        var revisions = await Task.WhenAll(crops.Select(crop => Task.Run(() =>
+        {
+            try
+            {
+                return CaptureStore.SaveEdits(capture, new CaptureEdits([], crop), original.Revision);
+            }
+            catch (CaptureEditConflictException)
+            {
+                return null;
+            }
+        })));
+
+        var current = CaptureStore.ReadEdits(capture);
+        Assert.Equal(current.Revision, Assert.Single(revisions.OfType<string>()));
+        Assert.Contains(current.Edits.Crop!.Value, crops);
+        Assert.Equal("original", File.ReadAllText(capture.OriginalPath));
+    }
+
+    [Fact]
+    public void CaptureLookupAndPaginationUseOnlyIdsInTheCurrentFolder()
+    {
+        var store = new CaptureStore(_root);
+        var first = store.SaveCapture(stream => stream.Write("first"u8));
+        var second = store.SaveCapture(stream => stream.Write("second"u8));
+        var page = Assert.Single(store.Recent(1));
+        var remaining = Assert.Single(store.Recent(1, page.Id));
+
+        Assert.Equal(new[] { first, second }.OrderBy(item => item.Id), new[] { page, remaining }.OrderBy(item => item.Id));
+        Assert.Equal(page, store.Find(page.Id));
+        Assert.Null(store.Find(Path.Combine("..", page.Id)));
+        Assert.Null(new CaptureStore(Path.Combine(_root, "missing")).Find(page.Id));
+    }
+
     public void Dispose() => Directory.Delete(_root, recursive: true);
 }

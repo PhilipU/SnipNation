@@ -8,7 +8,7 @@ namespace SnipNation.Windows;
 
 internal sealed class CaptureSession(DesktopSnapshot snapshot, Dispatcher dispatcher) : IDisposable
 {
-    private readonly CaptureSelection _selection = new(snapshot.Bounds, snapshot.Windows);
+    private readonly CaptureSelection _selection = new(snapshot.Bounds, snapshot.Windows.Select(window => window.Bounds).ToArray());
     private readonly List<CaptureOverlay> _overlays = [];
     private readonly TaskCompletionSource<PixelRect?> _result = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private CaptureOverlay? _pressedOverlay;

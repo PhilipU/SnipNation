@@ -16,10 +16,7 @@ namespace SnipNation;
 
 public partial class App : Application
 {
-    private static readonly string DataDirectory = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SnipNationData");
-    private static readonly string DefaultCaptureFolder = Path.Combine(DataDirectory, "Captures");
-    private readonly ToolPresets _presets = new(Path.Combine(DataDirectory, "AnnotationPresets"));
+    private readonly ToolPresets _presets = new(UserSettings.PresetFolder);
     private readonly Dictionary<CaptureFile, EditorWindow> _editors = [];
     private readonly HashSet<CaptureFile> _opening = [];
     private readonly CancellationTokenSource _stopping = new();
@@ -38,12 +35,17 @@ public partial class App : Application
     private bool _settingsOpen;
     private bool _exiting;
 
+    internal bool McpMode { get; init; }
+
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        if (McpMode)
+            return;
+
         var preferences = UserSettings.LoadPreferences();
         _updates = new UpdateService(VelopackLocator.Current, preferences.UpdateChannel);
-        _store = new CaptureStore(preferences.ScreenshotFolder ?? DefaultCaptureFolder);
+        _store = new CaptureStore(preferences.ScreenshotFolder ?? UserSettings.DefaultCaptureFolder);
         _gallery = new GalleryWindow();
         _gallery.CaptureRequested += StartCapture;
         _gallery.EditRequested += capture => _ = EditAsync(capture);
@@ -130,7 +132,10 @@ public partial class App : Application
             if (_gallery.IsActive)
                 _gallery.Hide();
             else
+            {
+                SelectCaptureFolder(UserSettings.CaptureFolder, refresh: true);
                 _gallery.Present(activate: true, NativeMethods.GetForegroundWindow());
+            }
         };
     }
 
@@ -139,7 +144,8 @@ public partial class App : Application
         if (_exiting || _settingsOpen || _captureTask is { IsCompleted: false })
             return;
 
-        var settings = new SettingsWindow(_store.DirectoryPath, DefaultCaptureFolder, _updates.Channel);
+        SelectCaptureFolder(UserSettings.CaptureFolder);
+        var settings = new SettingsWindow(_store.DirectoryPath, UserSettings.DefaultCaptureFolder, _updates.Channel);
         _gallery.Hide();
         _settingsOpen = true;
         try
@@ -155,12 +161,7 @@ public partial class App : Application
                 return;
             }
 
-            if (folder != _store.DirectoryPath)
-            {
-                _store = new CaptureStore(folder);
-                _gallery.ClearPreviews();
-                _ = LoadHistoryAsync();
-            }
+            SelectCaptureFolder(folder);
 
             if (channel != _updates.Channel)
             {
@@ -243,7 +244,23 @@ public partial class App : Application
     private void StartCapture()
     {
         if (!_exiting && !_settingsOpen && _captureTask is not { IsCompleted: false })
+        {
+            SelectCaptureFolder(UserSettings.CaptureFolder);
             _captureTask = CaptureAsync();
+        }
+    }
+
+    private void SelectCaptureFolder(string folder, bool refresh = false)
+    {
+        if (!string.Equals(folder, _store.DirectoryPath, StringComparison.OrdinalIgnoreCase))
+        {
+            _store = new CaptureStore(folder);
+            _gallery.ClearPreviews();
+        }
+        else if (!refresh)
+            return;
+
+        _ = LoadHistoryAsync(replace: refresh);
     }
 
     private async Task CaptureAsync()
@@ -321,7 +338,7 @@ public partial class App : Application
             NativeMethods.SetForegroundWindow(foreground);
     }
 
-    private async Task LoadHistoryAsync()
+    private async Task LoadHistoryAsync(bool replace = false)
     {
         var store = _store;
         try
@@ -334,7 +351,7 @@ public partial class App : Application
                 var preview = await Task.Run(() => ReadPreview(capture));
                 if (_exiting || store != _store)
                     return;
-                _gallery.AddOrUpdate(capture, preview, replace: false);
+                _gallery.AddOrUpdate(capture, preview, replace);
             }
         }
         catch (Exception error) when (Images.IsFileError(error))
@@ -373,11 +390,11 @@ public partial class App : Application
 
         try
         {
-            var document = await Task.Run(() => (Image: Images.Read(capture.OriginalPath), Edits: CaptureStore.LoadEdits(capture)));
+            var document = await Task.Run(() => (Image: Images.Read(capture.OriginalPath), Saved: CaptureStore.ReadEdits(capture)));
             if (_exiting)
                 return;
 
-            var editor = new EditorWindow(capture, document.Image, document.Edits, _presets);
+            var editor = new EditorWindow(capture, document.Image, document.Saved, _presets);
             var captureFolder = Path.GetDirectoryName(capture.DirectoryPath);
             editor.Saved += () =>
             {
