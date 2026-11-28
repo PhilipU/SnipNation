@@ -68,6 +68,10 @@
                                      Content="{editor:SvgIcon highlight}" ToolTip="Highlight" />
                         <RadioButton x:Name="TextTool" GroupName="Tool" Tag="Text" Checked="ToolChecked" Click="ToolClicked"
                                      Content="{editor:SvgIcon text}" ToolTip="Text" />
+                        <RadioButton x:Name="FrameTool" GroupName="Tool" Tag="Frame" Checked="ToolChecked" Click="ToolClicked"
+                                     Content="{editor:SvgIcon frame}" ToolTip="Frame" />
+                        <RadioButton x:Name="NumberTool" GroupName="Tool" Tag="Number" Checked="ToolChecked" Click="ToolClicked"
+                                     Content="{editor:SvgIcon number}" ToolTip="Numbering" />
                     </StackPanel>
                 </ScrollViewer>
             </Border>

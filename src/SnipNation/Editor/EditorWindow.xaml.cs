@@ -29,6 +29,8 @@ public partial class EditorWindow : Window
     private ImagePoint? _anchor;
     private Annotation? _preview;
     private AnnotationStyle? _gestureStyle;
+    private int _gestureNumber;
+    private bool _movingNumberTarget;
     private PixelRect? _cropSelection;
     private bool _fit = true;
 
@@ -125,10 +127,13 @@ public partial class EditorWindow : Window
 
         if (!IsCropping && _tool is null)
         {
-            _selected = FindAnnotation(e.GetPosition(_surface));
+            var cursor = e.GetPosition(_surface);
+            if (_selected < 0 || !IsNumberTarget(Annotations[_selected], cursor))
+                _selected = FindAnnotation(cursor);
             UpdateView();
             if (_selected < 0)
                 return;
+            _movingNumberTarget = IsNumberTarget(Annotations[_selected], cursor);
             if (e.ClickCount == 2 && Annotations[_selected].Kind == AnnotationKind.Text)
             {
                 var mark = Annotations[_selected];
@@ -151,6 +156,11 @@ public partial class EditorWindow : Window
             {
                 _gestureStyle = _tool is { } kind ? _presets.Get(kind, _activePreset) : null;
                 _stroke.Add(point);
+                if (_tool == AnnotationKind.Number)
+                {
+                    _gestureNumber = _edits.NextNumber;
+                    UpdateGesture(point);
+                }
             }
         }
         e.Handled = true;
@@ -194,7 +204,14 @@ public partial class EditorWindow : Window
         }
         else if (_tool is not { } kind)
         {
-            _preview = moved ? Annotations[_selected].Offset(dx, dy) : null;
+            _preview = moved ? MoveSelection(dx, dy) : null;
+        }
+        else if (kind == AnnotationKind.Number)
+        {
+            var style = _gestureStyle!;
+            var minimumConnector = Math.Max(4 / _scale.ScaleX, style.Size / 2 + 4);
+            ImagePoint[] points = dx * dx + dy * dy >= minimumConnector * minimumConnector ? [start, point] : [start];
+            _preview = style.CreateAnnotation(kind, points, _activePreset, number: _gestureNumber);
         }
         else if (kind == AnnotationKind.Freehand)
         {
@@ -207,10 +224,29 @@ public partial class EditorWindow : Window
         }
         else
         {
-            var valid = kind == AnnotationKind.Highlight ? Math.Abs(dx) >= 1 && Math.Abs(dy) >= 1 : moved;
+            var valid = kind is AnnotationKind.Highlight or AnnotationKind.Frame
+                ? Math.Abs(dx) >= 1 && Math.Abs(dy) >= 1
+                : moved;
             _preview = valid ? _gestureStyle!.CreateAnnotation(kind, [start, point], _activePreset) : null;
         }
         UpdateView();
+    }
+
+    private bool IsNumberTarget(Annotation annotation, Point point) =>
+        annotation is { Kind: AnnotationKind.Number, Points: [_, var target] } &&
+        (point - new Point(target.X, target.Y)).Length <= 7 / _scale.ScaleX;
+
+    private Annotation MoveSelection(double dx, double dy)
+    {
+        var annotation = Annotations[_selected];
+        if (annotation is not { Kind: AnnotationKind.Number, Points.Length: 2 })
+            return annotation.Offset(dx, dy);
+
+        var points = (ImagePoint[])annotation.Points.Clone();
+        var index = _movingNumberTarget ? 1 : 0;
+        var point = points[index];
+        points[index] = new ImagePoint(point.X + dx, point.Y + dy);
+        return annotation with { Points = points };
     }
 
     private void ClearGesture()
@@ -220,6 +256,7 @@ public partial class EditorWindow : Window
         _anchor = null;
         _preview = null;
         _gestureStyle = null;
+        _movingNumberTarget = false;
         _stroke.Clear();
         _surface.ReleaseMouseCapture();
         UpdateView();

@@ -104,7 +104,7 @@ jobs:
           fi
 
           for image in capture.png gallery.png editor-drawing.png editor-text.png desktop-gallery.png desktop-editor.png \
-              presets-arrow.png presets-highlight.png presets-text.png; do
+              presets-arrow.png presets-highlight.png presets-text.png presets-frame.png presets-number.png; do
             file="$RUNNER_TEMP/snipnation-screenshots/$image"
             test -s "$file"
             cp "$file" "$image"

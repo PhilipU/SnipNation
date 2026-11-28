@@ -16,7 +16,7 @@ dotnet test SnipNation.slnx -c Release --no-build --no-restore
 
 GitHub Actions renders the capture, gallery, and editor views on Windows 11. It also captures the gallery and editor on the Windows desktop with the taskbar visible. Download **snipnation-screenshots** from a pull request's **Build and test** run to review the current images. Successful builds of `main` publish those images to `readme-screenshots`.
 
-When an interface change affects a screenshot, check the result and update the sample content in `tools/SnipNation.Screenshots` if needed. Use the Lorem Ipsum document with its own paper and ink colors. Show the toolbar and the resulting annotations, including the open preset picker for the Arrow, Highlight, and Text tools.
+When an interface change affects a screenshot, check the result and update the sample content in `tools/SnipNation.Screenshots` if needed. Use the Lorem Ipsum document with its own paper and ink colors. Show the toolbar and the resulting annotations, including the open preset pickers for Arrow, Highlight, Text, Frame, and Numbering.
 
 To produce the same images on Windows after building, run the following command.
 

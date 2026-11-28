@@ -72,6 +72,11 @@ internal sealed class EditorSurface : FrameworkElement
         var pen = new Pen(Brand.BrushFor("AccentBrush"), 1.5 / _zoom) { DashStyle = DashStyles.Dash };
         context.DrawRectangle(null, new Pen(Brand.BrushFor("PaneBrush"), 2.5 / _zoom), bounds);
         context.DrawRectangle(null, pen, bounds);
+        if (selected is { Kind: AnnotationKind.Number, Points: [_, var target] })
+        {
+            var outline = new Pen(Brand.BrushFor("PaneBrush"), 1 / _zoom);
+            context.DrawEllipse(Brand.BrushFor("AccentBrush"), outline, new Point(target.X, target.Y), 4.5 / _zoom, 4.5 / _zoom);
+        }
     }
 
     private IEnumerable<Annotation> VisibleAnnotations()

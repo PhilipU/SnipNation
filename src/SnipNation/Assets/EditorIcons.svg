@@ -18,6 +18,12 @@
   <symbol id="text" viewBox="0 0 24 24">
     <path d="M5 8 V5 H19 V8 M12 5 V20 M8 20 H16"/>
   </symbol>
+  <symbol id="frame" viewBox="0 0 24 24">
+    <path d="M3.5 5.5 H20.5 V18.5 H3.5 Z"/>
+  </symbol>
+  <symbol id="number" viewBox="0 0 24 24">
+    <path d="M20.5 12 A8.5 8.5 0 1 1 3.5 12 A8.5 8.5 0 1 1 20.5 12 Z M10 10 L12 8 V16 M10 16 H14"/>
+  </symbol>
   <symbol id="color" viewBox="0 0 24 24">
     <path d="M12 3 C10 7 5 11 5 15 A7 7 0 0 0 19 15 C19 11 14 7 12 3 Z M8 15 C8 17 9 18 11 19"/>
   </symbol>

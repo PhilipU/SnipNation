@@ -25,6 +25,8 @@ Get the Windows installer from [Releases](https://github.com/PhilipU/SnipNation/
 5. To crop, choose **Crop image** at the top, drag over the area to keep, and press **Enter**.
 6. Press **Ctrl+S** to save your edits. Use **Ctrl+C** to copy the edited image or **Export** to save it as PNG or JPEG.
 
+Drag with **Frame** to outline an area. With **Numbering**, click to place the next number or drag from the marker to its target. Use **Select** to adjust either end of a connection.
+
 If **Print Screen** is already in use, right-click the tray icon and choose **Ctrl+Shift+Print Screen** under **Keyboard shortcuts**.
 
 ## Screenshots
@@ -55,5 +57,9 @@ If **Print Screen** is already in use, right-click the tray icon and choose **Ct
 ![Highlight tool with six solid color swatches](https://raw.githubusercontent.com/PhilipU/SnipNation/readme-screenshots/presets-highlight.png)
 
 ![Text tool with sans serif, serif, and monospace samples, each with a plain and outlined version](https://raw.githubusercontent.com/PhilipU/SnipNation/readme-screenshots/presets-text.png)
+
+![Frame tool with rectangle, rounded rectangle, circle, cloud, ellipse, and dashed rectangle presets](https://raw.githubusercontent.com/PhilipU/SnipNation/readme-screenshots/presets-frame.png)
+
+![Numbering tool with six marker shapes and connectors above a document with numbered steps](https://raw.githubusercontent.com/PhilipU/SnipNation/readme-screenshots/presets-number.png)
 
 [Contributing](CONTRIBUTING.md) · [Security policy](SECURITY.md)

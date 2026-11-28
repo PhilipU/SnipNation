@@ -126,7 +126,8 @@ public partial class EditorWindow
             return;
 
         var style = dialog.SelectedStyle;
-        var edited = style.CreateAnnotation(annotation.Kind, annotation.Points, annotation.PresetIndex, annotation.Text);
+        var edited = style.CreateAnnotation(annotation.Kind, annotation.Points, annotation.PresetIndex,
+            annotation.Text, dialog.Number);
         if (edited != annotation)
             ReplaceSelected(edited);
 

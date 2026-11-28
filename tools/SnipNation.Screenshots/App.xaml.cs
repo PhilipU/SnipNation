@@ -62,7 +62,17 @@ public partial class ScreenshotApp : Application
         SaveExcerpt(store, firstPage, new PixelRect(48, 40, 665, 149));
         SaveExcerpt(store, secondPage, new PixelRect(48, 207, 665, 159));
         SaveExcerpt(store, thirdPage, new PixelRect(48, 105, 665, 166));
-        store.SaveCapture(stream => Images.SavePng(thirdPage, stream));
+
+        var guides = store.SaveCapture(stream => Images.SavePng(thirdPage, stream));
+        CaptureStore.SaveEdits(guides, new CaptureEdits(
+        [
+            presets.Get(AnnotationKind.Frame, 1).CreateAnnotation(AnnotationKind.Frame,
+                [new(52, 35), new(514, 93)], 1),
+            presets.Get(AnnotationKind.Number, 0).CreateAnnotation(AnnotationKind.Number,
+                [new(28, 170), new(52, 133)], 0, number: 1),
+            presets.Get(AnnotationKind.Number, 2).CreateAnnotation(AnnotationKind.Number,
+                [new(724, 243), new(686, 230)], 2, number: 2)
+        ]));
 
         var drawing = store.SaveCapture(stream => Images.SavePng(firstPage, stream));
         CaptureStore.SaveEdits(drawing, new CaptureEdits(
@@ -100,7 +110,9 @@ public partial class ScreenshotApp : Application
 
         await SaveEditor(drawing, presets, AnnotationKind.Freehand, output, "editor-drawing.png", desktop);
         await SaveEditor(text, presets, AnnotationKind.Text, output, "editor-text.png", desktop: false);
-        SavePresetPickers(drawing, presets, output);
+        SavePresetPickers(drawing, presets, output, Enum.GetValues<AnnotationKind>()
+            .Where(kind => kind is not (AnnotationKind.Frame or AnnotationKind.Number)));
+        SavePresetPickers(guides, presets, output, [AnnotationKind.Frame, AnnotationKind.Number]);
         SaveCaptureOverlay(firstPage, output);
     }
 
@@ -124,13 +136,15 @@ public partial class ScreenshotApp : Application
         editor.Close();
     }
 
-    private static void SavePresetPickers(CaptureFile capture, ToolPresets presets, string output)
+    private static void SavePresetPickers(CaptureFile capture, ToolPresets presets, string output,
+        IEnumerable<AnnotationKind> kinds)
     {
-        var editor = new EditorWindow(capture, Images.Read(capture.OriginalPath), CaptureStore.LoadEdits(capture), presets);
+        var edits = CaptureStore.LoadEdits(capture);
+        var editor = new EditorWindow(capture, Images.Read(capture.OriginalPath), edits, presets);
         ShowForScreenshot(editor);
         var panel = (Border)editor.FindName("PresetPanel");
         var buttons = (UniformGrid)editor.FindName("PresetButtons");
-        foreach (var kind in Enum.GetValues<AnnotationKind>())
+        foreach (var kind in kinds)
         {
             var tool = (RadioButton)editor.FindName($"{kind}Tool");
             tool.IsChecked = true;
@@ -144,6 +158,8 @@ public partial class ScreenshotApp : Application
                 AnnotationKind.Arrow => "presets-arrow.png",
                 AnnotationKind.Highlight => "presets-highlight.png",
                 AnnotationKind.Text => "presets-text.png",
+                AnnotationKind.Frame => "presets-frame.png",
+                AnnotationKind.Number => "presets-number.png",
                 _ => null
             };
             if (file is not null)
@@ -152,6 +168,15 @@ public partial class ScreenshotApp : Application
             ((Button)buttons.Children[1]).RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
             if (panel.IsVisible)
                 throw new InvalidOperationException($"The {kind} preset picker stayed open after selection.");
+
+            if (kind is AnnotationKind.Frame or AnnotationKind.Number)
+            {
+                var mark = edits.Annotations.First(annotation => annotation.Kind == kind);
+                var settings = new AnnotationStyleDialog(editor, mark);
+                if (settings.SelectedStyle != mark.Style || settings.Number != mark.Number)
+                    throw new InvalidOperationException($"The {kind} settings did not load the saved annotation.");
+                settings.Close();
+            }
         }
         editor.Close();
     }
