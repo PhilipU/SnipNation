@@ -51,7 +51,8 @@ try {
     & dotnet @packArgs
     if ($LASTEXITCODE -ne 0) { throw 'Could not create the installer.' }
 
-    $releaseFiles = @("SnipNation-$Channel-Setup.exe", "SnipNation-$Version-full.nupkg", "releases.$Channel.json")
+    $channelSuffix = if ($Channel -eq 'win') { '' } else { "-$Channel" }
+    $releaseFiles = @("SnipNation-$Channel-Setup.exe", "SnipNation-$Version$channelSuffix-full.nupkg", "releases.$Channel.json")
     foreach ($file in $releaseFiles) {
         if (-not (Test-Path -LiteralPath (Join-Path $packages $file) -PathType Leaf)) {
             throw "Missing release file $file."

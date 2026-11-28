@@ -215,7 +215,7 @@ jobs:
           if [[ -z "$existing" ]] || jq -e '.draft' <<< "$existing" > /dev/null; then
             gh release upload "$tag" --repo "$GITHUB_REPOSITORY" --clobber \
               release-assets/SnipNation-beta-Setup.exe \
-              "release-assets/SnipNation-$BETA_VERSION-full.nupkg" \
+              "release-assets/SnipNation-$BETA_VERSION-beta-full.nupkg" \
               release-assets/releases.beta.json
             gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --draft=false --latest=false
           fi

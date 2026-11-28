@@ -223,7 +223,12 @@ public partial class ScreenshotApp : Application
 
         void WriteFeed(string channel, string version)
         {
-            var entry = new { PackageId = "SnipNation", Version = version, Type = "Full", FileName = $"SnipNation-{version}-full.nupkg" };
+            var suffix = channel == "win" ? "" : $"-{channel}";
+            var entry = new
+            {
+                PackageId = "SnipNation", Version = version, Type = "Full",
+                FileName = $"SnipNation-{version}{suffix}-full.nupkg"
+            };
             File.WriteAllText(Path.Combine(folder, $"releases.{channel}.json"), JsonSerializer.Serialize(new { Assets = new[] { entry } }));
         }
     }
