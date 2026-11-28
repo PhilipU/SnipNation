@@ -33,6 +33,7 @@ public partial class EditorWindow : Window
     private bool _movingNumberTarget;
     private PixelRect? _cropSelection;
     private bool _fit = true;
+    private bool _applying;
 
     internal EditorWindow(CaptureFile capture, BitmapSource original, CaptureEdits edits, ToolPresets presets)
     {
@@ -76,7 +77,9 @@ public partial class EditorWindow : Window
 
     protected override void OnClosing(CancelEventArgs e)
     {
-        if (IsDirty)
+        if (_applying)
+            e.Cancel = true;
+        else if (IsDirty)
         {
             var answer = MessageBox.Show(this, "Save changes?", "SnipNation",
                 MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
@@ -377,17 +380,19 @@ public partial class EditorWindow : Window
         }
     }
 
-    private async Task CopyAsync()
+    private async Task<bool> CopyAsync()
     {
         try
         {
             var copied = await Images.CopyAsync(Images.Compose(_image, Annotations));
             SetStatus(copied ? null : "Clipboard is busy.");
+            return copied;
         }
         catch (Exception error) when (Images.IsFileError(error))
         {
             SetStatus("Could not copy the image.");
             Trace.TraceWarning("Copy edited image: {0}", error.Message);
+            return false;
         }
     }
 
@@ -527,6 +532,28 @@ public partial class EditorWindow : Window
     private void UndoClicked(object sender, RoutedEventArgs e) => Restore(_undo, _redo);
     private void RedoClicked(object sender, RoutedEventArgs e) => Restore(_redo, _undo);
     private void SaveClicked(object sender, RoutedEventArgs e) => Save();
+
+    private async void ApplyEditsClicked(object sender, RoutedEventArgs e)
+    {
+        if (_applying || !Save())
+            return;
+
+        _applying = true;
+        IsEnabled = false;
+        bool copied;
+        try
+        {
+            copied = await CopyAsync();
+        }
+        finally
+        {
+            _applying = false;
+            IsEnabled = true;
+        }
+        if (copied)
+            Close();
+    }
+
     private async void CopyClicked(object sender, RoutedEventArgs e) => await CopyAsync();
     private void ApplyCropClicked(object sender, RoutedEventArgs e) => ApplyCrop();
     private void CancelCropClicked(object sender, RoutedEventArgs e) => ExitCropMode();

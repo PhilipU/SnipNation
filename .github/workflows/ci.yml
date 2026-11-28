@@ -103,7 +103,7 @@ jobs:
             git checkout -B "$SCREENSHOT_BRANCH" FETCH_HEAD
           fi
 
-          for image in capture.png gallery.png editor-drawing.png editor-text.png desktop-gallery.png desktop-editor.png \
+          for image in capture.png gallery.png settings.png editor-drawing.png editor-text.png desktop-gallery.png desktop-editor.png \
               presets-arrow.png presets-highlight.png presets-text.png presets-frame.png presets-number.png; do
             file="$RUNNER_TEMP/snipnation-screenshots/$image"
             test -s "$file"

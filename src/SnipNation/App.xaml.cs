@@ -16,12 +16,13 @@ public partial class App : Application
 {
     private static readonly string DataDirectory = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SnipNationData");
-    private readonly CaptureStore _store = new(Path.Combine(DataDirectory, "Captures"));
+    private static readonly string DefaultCaptureFolder = Path.Combine(DataDirectory, "Captures");
     private readonly ToolPresets _presets = new(Path.Combine(DataDirectory, "AnnotationPresets"));
     private readonly Dictionary<CaptureFile, EditorWindow> _editors = [];
     private readonly HashSet<CaptureFile> _opening = [];
     private readonly CancellationTokenSource _stopping = new();
     private readonly UpdateService _updates = new();
+    private CaptureStore _store = null!;
     private GalleryWindow _gallery = null!;
     private GlobalHotkey _hotkey = null!;
     private Forms.NotifyIcon _tray = null!;
@@ -30,11 +31,13 @@ public partial class App : Application
     private Stream? _iconStream;
     private Task? _captureTask;
     private CaptureSession? _session;
+    private bool _settingsOpen;
     private bool _exiting;
 
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        _store = new CaptureStore(UserSettings.LoadScreenshotFolder() ?? DefaultCaptureFolder);
         _gallery = new GalleryWindow();
         _gallery.CaptureRequested += StartCapture;
         _gallery.EditRequested += capture => _ = EditAsync(capture);
@@ -72,6 +75,7 @@ public partial class App : Application
     private void CreateTray()
     {
         var menu = new Forms.ContextMenuStrip { Renderer = new TrayRenderer() };
+        menu.Items.Add("Settings", null, (_, _) => ShowSettings());
         var shortcuts = new Forms.ToolStripMenuItem("Keyboard shortcuts");
         _printItem = new Forms.ToolStripMenuItem(ShortcutLabel(CaptureShortcut.Print), null,
             (_, _) => ChooseShortcut(CaptureShortcut.Print));
@@ -111,13 +115,44 @@ public partial class App : Application
         };
         _tray.MouseClick += (_, args) =>
         {
-            if (args.Button != Forms.MouseButtons.Left || _exiting || _captureTask is { IsCompleted: false })
+            if (args.Button != Forms.MouseButtons.Left || _exiting || _settingsOpen ||
+                _captureTask is { IsCompleted: false })
                 return;
             if (_gallery.IsActive)
                 _gallery.Hide();
             else
                 _gallery.Present(activate: true, NativeMethods.GetForegroundWindow());
         };
+    }
+
+    private void ShowSettings()
+    {
+        if (_exiting || _settingsOpen || _captureTask is { IsCompleted: false })
+            return;
+
+        var settings = new SettingsWindow(_store.DirectoryPath, DefaultCaptureFolder);
+        _gallery.Hide();
+        _settingsOpen = true;
+        try
+        {
+            if (settings.ShowDialog() != true)
+                return;
+
+            var folder = settings.ScreenshotFolder;
+            if (!UserSettings.SaveScreenshotFolder(folder))
+            {
+                ShowTrayStatus("Could not save the screenshot folder setting.");
+                return;
+            }
+
+            _store = new CaptureStore(folder);
+            _gallery.ClearPreviews();
+            _ = LoadHistoryAsync();
+        }
+        finally
+        {
+            _settingsOpen = false;
+        }
     }
 
     private void RegisterPreferredShortcut()
@@ -169,12 +204,13 @@ public partial class App : Application
 
     private void StartCapture()
     {
-        if (!_exiting && _captureTask is not { IsCompleted: false })
+        if (!_exiting && !_settingsOpen && _captureTask is not { IsCompleted: false })
             _captureTask = CaptureAsync();
     }
 
     private async Task CaptureAsync()
     {
+        var store = _store;
         var foreground = NativeMethods.GetForegroundWindow();
         if (foreground == _gallery.Handle)
             foreground = _gallery.PreviousForeground;
@@ -203,7 +239,7 @@ public partial class App : Application
             string? status = null;
             try
             {
-                var capture = await Task.Run(() => _store.SaveCapture(stream => Images.SavePng(image, stream)));
+                var capture = await Task.Run(() => store.SaveCapture(stream => Images.SavePng(image, stream)));
                 _gallery.AddOrUpdate(capture, await Task.Run(() => ReadPreview(capture)));
             }
             catch (Exception error) when (Images.IsFileError(error))
@@ -249,20 +285,24 @@ public partial class App : Application
 
     private async Task LoadHistoryAsync()
     {
+        var store = _store;
         try
         {
-            var captures = await Task.Run(() => _store.Recent(GalleryWindow.HistoryLimit));
+            var captures = await Task.Run(() => store.Recent(GalleryWindow.HistoryLimit));
             foreach (var capture in captures)
             {
+                if (_exiting || store != _store)
+                    return;
                 var preview = await Task.Run(() => ReadPreview(capture));
-                if (_exiting)
+                if (_exiting || store != _store)
                     return;
                 _gallery.AddOrUpdate(capture, preview, replace: false);
             }
         }
         catch (Exception error) when (Images.IsFileError(error))
         {
-            _gallery.ShowStatus("Could not load the screenshots.");
+            if (!_exiting && store == _store)
+                _gallery.ShowStatus("Could not load the screenshots.");
             Trace.TraceWarning("Gallery: {0}", error.Message);
         }
     }
@@ -300,7 +340,12 @@ public partial class App : Application
                 return;
 
             var editor = new EditorWindow(capture, document.Image, document.Edits, _presets);
-            editor.Saved += () => _gallery.AddOrUpdate(capture, ReadPreview(capture));
+            var captureFolder = Path.GetDirectoryName(capture.DirectoryPath);
+            editor.Saved += () =>
+            {
+                if (string.Equals(captureFolder, _store.DirectoryPath, StringComparison.OrdinalIgnoreCase))
+                    _gallery.AddOrUpdate(capture, ReadPreview(capture));
+            };
             editor.Closed += (_, _) => _editors.Remove(capture);
             _editors.Add(capture, editor);
             _gallery.Hide();
@@ -342,7 +387,7 @@ public partial class App : Application
 
     private async Task ExitAsync()
     {
-        if (_exiting)
+        if (_exiting || _settingsOpen)
             return;
 
         _exiting = true;

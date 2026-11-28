@@ -1,0 +1,30 @@
+<Window x:Class="SnipNation.Windows.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="SnipNation Settings" Width="520" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterScreen" ShowInTaskbar="False" UseLayoutRounding="True"
+        FontFamily="{StaticResource BrandFont}" FontSize="13"
+        Background="{StaticResource PaneBrush}" Foreground="{StaticResource InkBrush}"
+        Icon="/SnipNation;component/Assets/SnipNation.ico">
+    <Border Padding="16" Background="{StaticResource PaneBrush}">
+        <StackPanel KeyboardNavigation.TabNavigation="Cycle">
+            <Label Content="Screenshot folder" Target="{Binding ElementName=FolderBox}"
+                   Foreground="{StaticResource InkBrush}" FontWeight="Medium" Padding="0,0,0,8" />
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Content="Browse…" Padding="12,4"
+                        Margin="8,0,0,0" Click="BrowseClicked" />
+                <TextBox x:Name="FolderBox" MinHeight="34" VerticalContentAlignment="Center"
+                         AutomationProperties.Name="Screenshot folder" />
+            </DockPanel>
+            <TextBlock x:Name="StatusText" Visibility="Collapsed" Margin="0,8,0,0" TextWrapping="Wrap"
+                       Foreground="{StaticResource MutedInkBrush}" AutomationProperties.LiveSetting="Polite" />
+            <DockPanel Margin="0,16,0,0">
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <Button Content="Cancel" Padding="12,4" Margin="0,0,8,0" IsCancel="True" />
+                    <Button Content="Save" Padding="12,4" IsDefault="True" Click="SaveClicked" />
+                </StackPanel>
+                <Button Content="Use default" HorizontalAlignment="Left" Padding="12,4" Click="UseDefaultClicked" />
+            </DockPanel>
+        </StackPanel>
+    </Border>
+</Window>

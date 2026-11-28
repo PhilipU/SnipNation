@@ -39,6 +39,9 @@
                         <Button x:Name="UndoButton" Content="{editor:SvgIcon undo}" ToolTip="Undo (Ctrl+Z)" Click="UndoClicked" />
                         <Button x:Name="RedoButton" Content="{editor:SvgIcon redo}" ToolTip="Redo (Ctrl+Y)" Click="RedoClicked" />
                         <Button x:Name="SaveButton" Content="{editor:SvgIcon save}" ToolTip="Save edits (Ctrl+S)" Click="SaveClicked" />
+                        <Button x:Name="ApplyEditsButton" Content="{editor:SvgIcon save-apply}" Click="ApplyEditsClicked"
+                                ToolTip="Apply (save, copy, and close)" Background="{StaticResource AccentBrush}"
+                                Foreground="{StaticResource PaneBrush}" BorderBrush="{StaticResource AccentBrush}" />
                         <Button Content="{editor:SvgIcon copy}" ToolTip="Copy image (Ctrl+C)" Click="CopyClicked" />
                     </StackPanel>
                     <TextBlock x:Name="StatusText" Grid.Column="1" VerticalAlignment="Center" Margin="8,0" Visibility="Collapsed"
