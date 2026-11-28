@@ -6,7 +6,7 @@ using SnipNation.Core;
 
 namespace SnipNation.Imaging;
 
-internal static class AnnotationGraphics
+internal static partial class AnnotationGraphics
 {
     private static readonly FontFamily Serif = new("Georgia");
     private static readonly FontFamily Monospace = new("Consolas");
@@ -48,6 +48,12 @@ internal static class AnnotationGraphics
                 break;
             case AnnotationKind.Text:
                 DrawText(context, annotation, brush, start);
+                break;
+            case AnnotationKind.Frame:
+                DrawFrame(context, pen, start, ToPoint(points[1]), annotation.Frame);
+                break;
+            case AnnotationKind.Number:
+                DrawNumber(context, annotation, brush, start);
                 break;
         }
         return group;

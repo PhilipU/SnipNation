@@ -73,6 +73,24 @@ internal sealed class ToolPresets(string directory)
             new(Yellow, 28, Outline: true),
             new(Orange, 28, Font: AnnotationFont.Serif, Outline: true),
             new(Purple, 28, Font: AnnotationFont.Monospace, Outline: true)
+        ],
+        [AnnotationKind.Frame] =
+        [
+            new(Green, 4),
+            new(Blue, 4, Frame: FrameShape.RoundedRectangle),
+            new(Red, 4, Frame: FrameShape.Circle),
+            new(Yellow, 4, Frame: FrameShape.Cloud),
+            new(Orange, 4, Frame: FrameShape.Ellipse),
+            new(Purple, 3, StrokePattern.Dashed)
+        ],
+        [AnnotationKind.Number] =
+        [
+            new(Green, 28),
+            new(Blue, 28, Marker: NumberShape.RoundedSquare, Connector: ConnectorStyle.Elbow),
+            new(Red, 28, Marker: NumberShape.Diamond, Connector: ConnectorStyle.Arrow),
+            new(Yellow, 28, Marker: NumberShape.Square, Connector: ConnectorStyle.Dashed),
+            new(Orange, 28, Marker: NumberShape.Hexagon, Connector: ConnectorStyle.Curved),
+            new(Purple, 26, Marker: NumberShape.Pill, Connector: ConnectorStyle.Dotted)
         ]
     };
     private readonly AnnotationPresetStore _store = new(directory);
@@ -115,6 +133,22 @@ internal sealed class ToolPresets(string directory)
         _ => "Sans serif"
     };
 
+    internal static string FrameShapeLabel(FrameShape shape) =>
+        shape == FrameShape.RoundedRectangle ? "Rounded rectangle" : shape.ToString();
+
+    internal static string NumberShapeLabel(NumberShape shape) =>
+        shape == NumberShape.RoundedSquare ? "Rounded square" : shape.ToString();
+
+    internal static string ConnectorLabel(ConnectorStyle style) => style switch
+    {
+        ConnectorStyle.Elbow => "Elbow and dot",
+        ConnectorStyle.Arrow => "Arrow",
+        ConnectorStyle.Dashed => "Dashed line and dot",
+        ConnectorStyle.Curved => "Curve and ring",
+        ConnectorStyle.Dotted => "Dotted line and ring",
+        _ => "Line and dot"
+    };
+
     internal static string OpacityLabel(byte alpha) => FormattableString.Invariant($"{Math.Round(alpha * 100.0 / 255)}%");
 
     internal static string Describe(AnnotationKind kind, int index, AnnotationStyle style)
@@ -129,6 +163,8 @@ internal sealed class ToolPresets(string directory)
             AnnotationKind.Highlight => OpacityLabel((byte)(style.Argb >> 24)),
             AnnotationKind.Text => $"{FontLabel(style.Font)}, {size}, {(style.Bold ? "Bold" : "Regular")}" +
                 (style.Outline ? ", Outlined" : ""),
+            AnnotationKind.Frame => $"{FrameShapeLabel(style.Frame)}, {size}, {style.Pattern}",
+            AnnotationKind.Number => $"{NumberShapeLabel(style.Marker)}, {size}, {ConnectorLabel(style.Connector)}",
             _ => $"{size}, {style.Pattern}"
         };
         return $"Preset {index + 1}, {color}, {details}";

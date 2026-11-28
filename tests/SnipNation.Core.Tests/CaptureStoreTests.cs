@@ -20,7 +20,10 @@ public sealed class CaptureStoreTests : IDisposable
             new(AnnotationKind.Freehand, [new(0, 0), new(5, 10), new(8, 12)], 0xFFDC2633, 4),
             new(AnnotationKind.Highlight, [new(120, 40), new(230, 70)], 0x66FFD43B, 4),
             new(AnnotationKind.Text, [new(30, 90)], 0xFFFFFFFF, 24, "Open\nSave…",
-                Bold: true, PresetIndex: 5, Font: AnnotationFont.Monospace, Outline: true)
+                Bold: true, PresetIndex: 5, Font: AnnotationFont.Monospace, Outline: true),
+            new(AnnotationKind.Frame, [new(4, 4), new(90, 37)], 0xFFFFCF22, 4,
+                Pattern: StrokePattern.Dotted, PresetIndex: 3, Frame: FrameShape.Cloud),
+            new(AnnotationKind.Number, [new(22, 35)], 0xFF278747, 28, PresetIndex: 0, Number: 1)
         ];
 
         Assert.Empty(CaptureStore.LoadEdits(capture).Annotations);
@@ -35,6 +38,26 @@ public sealed class CaptureStoreTests : IDisposable
             Assert.Equal(annotations[index], restored[index] with { Points = annotations[index].Points });
         }
         Assert.Equal("original", File.ReadAllText(reopened.OriginalPath));
+    }
+
+    [Fact]
+    public void ConnectedNumbersKeepTheirTargetAndSequenceAfterCropping()
+    {
+        var capture = new CaptureStore(_root).SaveCapture(stream => stream.Write("original"u8));
+        var style = new AnnotationStyle(0xFFDE3749, 28, Marker: NumberShape.Diamond, Connector: ConnectorStyle.Curved);
+        var mark = style.CreateAnnotation(AnnotationKind.Number, [new(40, 50), new(96, 30)], 2, number: 4);
+        var original = new CaptureEdits([mark]);
+        Assert.Equal(1, new CaptureEdits([]).NextNumber);
+        Assert.Equal(5, original.NextNumber);
+
+        CaptureStore.SaveEdits(capture, original.CropTo(new PixelRect(12, 10, 110, 80)));
+        var reopened = CaptureStore.LoadEdits(capture);
+        var number = Assert.Single(reopened.Annotations);
+        Assert.Equal(new ImagePoint[] { new(28, 40), new(84, 20) }, number.Points);
+        Assert.Equal(style, number.Style);
+        Assert.Equal(4, number.Number);
+        Assert.Equal(2, number.PresetIndex);
+        Assert.Equal(5, reopened.NextNumber);
     }
 
     [Fact]

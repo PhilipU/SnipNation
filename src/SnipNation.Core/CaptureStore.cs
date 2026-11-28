@@ -22,7 +22,10 @@ public sealed class CaptureStore(string root)
             new JsonStringEnumConverter<AnnotationKind>(),
             new JsonStringEnumConverter<StrokePattern>(),
             new JsonStringEnumConverter<ArrowheadStyle>(),
-            new JsonStringEnumConverter<AnnotationFont>()
+            new JsonStringEnumConverter<AnnotationFont>(),
+            new JsonStringEnumConverter<FrameShape>(),
+            new JsonStringEnumConverter<NumberShape>(),
+            new JsonStringEnumConverter<ConnectorStyle>()
         }
     };
 
@@ -104,9 +107,11 @@ public sealed class CaptureStore(string root)
 
         return annotation.Kind switch
         {
-            AnnotationKind.Arrow or AnnotationKind.Line or AnnotationKind.Highlight => annotation.Points.Length == 2,
+            AnnotationKind.Arrow or AnnotationKind.Line or AnnotationKind.Highlight or AnnotationKind.Frame =>
+                annotation.Points.Length == 2,
             AnnotationKind.Freehand => annotation.Points.Length >= 2,
             AnnotationKind.Text => annotation.Points.Length == 1,
+            AnnotationKind.Number => (annotation.Points.Length is 1 or 2) && annotation.Number > 0,
             _ => false
         };
     }

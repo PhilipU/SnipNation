@@ -81,6 +81,10 @@
             <Label Content="Arrow shape" Target="{Binding ElementName=ArrowShapeBox}" />
             <ComboBox x:Name="ArrowShapeBox" SelectionChanged="StyleChanged" />
         </DockPanel>
+        <DockPanel x:Name="FrameShapeRow" Style="{StaticResource FieldRow}">
+            <Label Content="Frame shape" Target="{Binding ElementName=FrameShapeBox}" />
+            <ComboBox x:Name="FrameShapeBox" SelectionChanged="StyleChanged" />
+        </DockPanel>
         <DockPanel x:Name="PatternRow" Style="{StaticResource FieldRow}">
             <Label Content="Pattern" Target="{Binding ElementName=PatternBox}" />
             <ComboBox x:Name="PatternBox" SelectionChanged="StyleChanged" />
@@ -93,6 +97,20 @@
             <Label Content="Font" Target="{Binding ElementName=FontBox}" />
             <ComboBox x:Name="FontBox" SelectionChanged="StyleChanged" />
         </DockPanel>
+        <DockPanel x:Name="NumberShapeRow" Style="{StaticResource FieldRow}">
+            <Label Content="Marker shape" Target="{Binding ElementName=NumberShapeBox}" />
+            <ComboBox x:Name="NumberShapeBox" SelectionChanged="StyleChanged" />
+        </DockPanel>
+        <DockPanel x:Name="ConnectorRow" Style="{StaticResource FieldRow}">
+            <Label Content="Connector" Target="{Binding ElementName=ConnectorBox}" />
+            <ComboBox x:Name="ConnectorBox" SelectionChanged="StyleChanged" />
+        </DockPanel>
+        <DockPanel x:Name="NumberRow" Style="{StaticResource FieldRow}">
+            <Label Content="Number" Target="{Binding ElementName=NumberBox}" />
+            <TextBox x:Name="NumberBox" MinHeight="30" VerticalContentAlignment="Center" TextChanged="StyleChanged" />
+        </DockPanel>
+        <TextBlock x:Name="NumberError" Text="Enter a whole number greater than zero." Visibility="Collapsed"
+                   Foreground="{StaticResource AccentBrush}" AutomationProperties.LiveSetting="Polite" />
         <CheckBox x:Name="BoldBox" Content="Bold text" Checked="StyleChanged" Unchecked="StyleChanged" />
         <CheckBox x:Name="OutlineBox" Content="Text outline" Checked="StyleChanged" Unchecked="StyleChanged" />
         <CheckBox x:Name="DefaultBox" Content="Save as default for this preset" />

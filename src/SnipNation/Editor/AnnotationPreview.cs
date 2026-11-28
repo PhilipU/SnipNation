@@ -8,7 +8,7 @@ namespace SnipNation.Editor;
 
 internal static class AnnotationPreview
 {
-    internal static DrawingImage Render(AnnotationKind kind, AnnotationStyle style)
+    internal static DrawingImage Render(AnnotationKind kind, AnnotationStyle style, int number = 1)
     {
         const double width = 88;
         const double height = 48;
@@ -17,9 +17,12 @@ internal static class AnnotationPreview
             AnnotationKind.Text => [new(0, 0)],
             AnnotationKind.Highlight => [new(0, 0), new(width, height)],
             AnnotationKind.Freehand => [new(0, 4), new(9, 9), new(18, 7), new(29, -5), new(41, -8), new(53, -4), new(64, -8)],
+            AnnotationKind.Frame => [new(0, 0), new(64, 31)],
+            AnnotationKind.Number => [new(0, 0), new(49, 13)],
             _ => [new(0, 14), new(64, 0)]
         };
-        var mark = AnnotationGraphics.Create(style.CreateAnnotation(kind, points, text: "Aa"));
+        var mark = AnnotationGraphics.Create(style.CreateAnnotation(kind, points, text: "Aa",
+            number: kind == AnnotationKind.Number ? number : 0));
         var bounds = mark.Bounds;
         var outlinedText = kind == AnnotationKind.Text && style.Outline;
         var useDarkPaper = kind != AnnotationKind.Highlight &&
