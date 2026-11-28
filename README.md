@@ -19,7 +19,7 @@ SnipNation is a screenshot tool for Windows 11. Capture and annotate screenshots
 Download the [Stable installer](https://github.com/PhilipU/SnipNation/releases/latest/download/SnipNation-win-Setup.exe).
 
 1. Press **Print Screen**, or click the SnipNation icon in the system tray and choose **Screenshot**.
-2. Click an outlined window or drag to capture an area. Press **Esc** to cancel.
+2. Click an outlined window or drag to capture an area. Hover over the exposed part of a main window to capture it with its pop-up. Press **Esc** to cancel.
 3. Paste the screenshot with **Ctrl+V**, or double-click it in the tray gallery to edit it. Select an annotation tool on the left and choose one of its six presets.
 4. Right-click an annotation and choose **Settings** to change its style. Select **Save as default for this preset** to replace the preset for future annotations.
 5. To crop, choose **Crop image** at the top, drag over the area to keep, and press **Enter**.

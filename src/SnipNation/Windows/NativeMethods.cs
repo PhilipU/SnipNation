@@ -12,6 +12,7 @@ internal static class NativeMethods
     internal const uint ControlAndShift = 0x0006;
     internal const uint NoActivateOrZOrder = 0x0014;
     internal const uint SourceCopyWithLayers = 0x40CC0020;
+    internal const uint NextWindow = 2;
     internal const int ExtendedFrameBounds = 9;
     internal const int Cloaked = 14;
 
@@ -76,7 +77,13 @@ internal static class NativeMethods
     internal static extern nint GetShellWindow();
 
     [DllImport("user32.dll")]
-    internal static extern bool EnumWindows(WindowCallback callback, nint parameter);
+    internal static extern bool EnumDesktopWindows(nint desktop, WindowCallback callback, nint parameter);
+
+    [DllImport("user32.dll")]
+    internal static extern nint GetTopWindow(nint parent);
+
+    [DllImport("user32.dll")]
+    internal static extern nint GetWindow(nint window, uint command);
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     internal static extern int GetClassName(nint window, StringBuilder className, int bufferSize);
@@ -86,6 +93,9 @@ internal static class NativeMethods
 
     [DllImport("user32.dll", EntryPoint = "GetWindowLongW")]
     internal static extern int GetWindowLong(nint window, int index);
+
+    [DllImport("user32.dll")]
+    internal static extern bool GetLayeredWindowAttributes(nint window, out uint colorKey, out byte opacity, out uint flags);
 
     [DllImport("user32.dll")]
     internal static extern bool GetWindowRect(nint window, out NativeRect bounds);
