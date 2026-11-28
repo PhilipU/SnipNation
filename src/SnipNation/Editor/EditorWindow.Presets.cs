@@ -75,8 +75,11 @@ public partial class EditorWindow
         PresetPanel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         var origin = anchor.TranslatePoint(new Point(anchor.ActualWidth + 12, 0), PresetLayer);
         var size = PresetPanel.DesiredSize;
+        var viewportTop = Viewport.TranslatePoint(new Point(), PresetLayer).Y;
+        var top = viewportTop + 8;
+        var bottom = viewportTop + Viewport.ActualHeight - 8;
         Canvas.SetLeft(PresetPanel, Math.Clamp(origin.X, 8, Math.Max(8, PresetLayer.ActualWidth - size.Width - 8)));
-        Canvas.SetTop(PresetPanel, Math.Clamp(origin.Y, 8, Math.Max(8, PresetLayer.ActualHeight - size.Height - 8)));
+        Canvas.SetTop(PresetPanel, Math.Clamp(origin.Y, top, Math.Max(top, bottom - size.Height)));
     }
 
     private void EditorMouseDown(object sender, MouseButtonEventArgs e)

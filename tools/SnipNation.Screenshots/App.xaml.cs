@@ -144,6 +144,7 @@ public partial class ScreenshotApp : Application
         ShowForScreenshot(editor);
         var panel = (Border)editor.FindName("PresetPanel");
         var buttons = (UniformGrid)editor.FindName("PresetButtons");
+        var viewport = (ScrollViewer)editor.FindName("Viewport");
         foreach (var kind in kinds)
         {
             var tool = (RadioButton)editor.FindName($"{kind}Tool");
@@ -152,6 +153,11 @@ public partial class ScreenshotApp : Application
             if (!panel.IsVisible || buttons.Children.Count != AnnotationPresetStore.SlotCount ||
                 buttons.Children.Cast<Button>().Any(button => button.Content is not Image { Source: not null }))
                 throw new InvalidOperationException($"The {kind} tool did not show six preset previews.");
+
+            editor.UpdateLayout();
+            var top = panel.TranslatePoint(new Point(), viewport).Y;
+            if (top < 0 || top + panel.ActualHeight > viewport.ActualHeight)
+                throw new InvalidOperationException($"The {kind} preset picker overlaps the editor controls.");
 
             var file = kind switch
             {
