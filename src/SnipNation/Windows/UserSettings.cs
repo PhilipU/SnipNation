@@ -1,8 +1,11 @@
 using System.Diagnostics;
 using System.Security;
+using System.Text.Json;
 using Microsoft.Win32;
 
 namespace SnipNation.Windows;
+
+internal sealed record AppPreferences(string? ScreenshotFolder, UpdateChannel? UpdateChannel);
 
 internal static class UserSettings
 {
@@ -11,6 +14,7 @@ internal static class UserSettings
     private const string Name = "SnipNation";
     private const string ShortcutName = "CaptureShortcut";
     private const string ScreenshotFolderName = "ScreenshotFolder";
+    private const string PreferencesName = "Preferences";
 
     internal static bool StartsAtLogon()
     {
@@ -52,21 +56,32 @@ internal static class UserSettings
 
     internal static bool SaveShortcut(CaptureShortcut shortcut) => SaveValue(ShortcutName, (int)shortcut);
 
-    internal static string? LoadScreenshotFolder()
+    internal static AppPreferences LoadPreferences()
     {
+        string? previousFolder = null;
         try
         {
             using var key = Registry.CurrentUser.OpenSubKey(SettingsKey);
-            return key?.GetValue(ScreenshotFolderName) is string path && Path.IsPathFullyQualified(path) ? path : null;
+            previousFolder = FullPathOrNull(key?.GetValue(ScreenshotFolderName) as string);
+            if (key?.GetValue(PreferencesName) is string json &&
+                JsonSerializer.Deserialize<AppPreferences>(json) is { } preferences)
+            {
+                return new AppPreferences(FullPathOrNull(preferences.ScreenshotFolder) ?? previousFolder,
+                    preferences.UpdateChannel is { } channel && Enum.IsDefined(channel) ? channel : null);
+            }
         }
-        catch (Exception error) when (error is UnauthorizedAccessException or SecurityException or IOException)
+        catch (Exception error) when (error is UnauthorizedAccessException or SecurityException or IOException or JsonException)
         {
-            Trace.TraceWarning("Read screenshot folder: {0}", error.Message);
-            return null;
+            Trace.TraceWarning("Read preferences: {0}", error.Message);
         }
+        return new AppPreferences(previousFolder, null);
     }
 
-    internal static bool SaveScreenshotFolder(string folder) => SaveValue(ScreenshotFolderName, folder);
+    internal static bool SavePreferences(AppPreferences preferences) =>
+        SaveValue(PreferencesName, JsonSerializer.Serialize(preferences));
+
+    private static string? FullPathOrNull(string? path) =>
+        path is not null && Path.IsPathFullyQualified(path) ? path : null;
 
     private static bool SaveValue(string name, object value)
     {

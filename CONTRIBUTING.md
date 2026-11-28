@@ -25,3 +25,9 @@ dotnet run --project tools/SnipNation.Screenshots -c Release --no-build --no-res
 ```
 
 Add `--desktop` to include the two full-screen images. Run that option in an interactive test session with the taskbar visible and only public content on the desktop.
+
+## Beta and stable releases
+
+Successful CI runs on `main` package a Windows beta on Ubuntu and publish it as a GitHub pre-release. Beta versions use the next patch number from the Release Please manifest and the CI run number. GitHub retains the five newest automated beta releases.
+
+Manually run **Build and test** on a feature branch to verify beta packaging. Download the **snipnation-beta** artifact from that run. Request a stable release through **Actions → Release SnipNation → Run workflow** on `main`.

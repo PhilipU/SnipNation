@@ -29,6 +29,8 @@ Drag with **Frame** to outline an area. With **Numbering**, click to place the n
 
 To change the screenshot folder, right-click the tray icon and choose **Settings**. The gallery shows the screenshots in the chosen folder.
 
+Choose **Stable** or **Beta** under **Update channel** in **Settings**. Choose **Restart to update** from the tray menu when an update is ready.
+
 If **Print Screen** is already in use, right-click the tray icon and choose **Ctrl+Shift+Print Screen** under **Keyboard shortcuts**.
 
 ## Screenshots
@@ -44,7 +46,7 @@ If **Print Screen** is already in use, right-click the tray icon and choose **Ct
   <img src="https://raw.githubusercontent.com/PhilipU/SnipNation/readme-screenshots/gallery.png" width="280" alt="SnipNation tray gallery with recent screenshots">
 </p>
 
-![SnipNation settings with the screenshot folder field and Browse button](https://raw.githubusercontent.com/PhilipU/SnipNation/readme-screenshots/settings.png)
+![SnipNation settings showing the screenshot folder and the Stable update channel](https://raw.githubusercontent.com/PhilipU/SnipNation/readme-screenshots/settings.png)
 
 **Arrows, lines, and freehand**
 

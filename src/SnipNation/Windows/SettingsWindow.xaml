@@ -16,6 +16,10 @@
                 <TextBox x:Name="FolderBox" MinHeight="34" VerticalContentAlignment="Center"
                          AutomationProperties.Name="Screenshot folder" />
             </DockPanel>
+            <Label Content="Update channel" Target="{Binding ElementName=ChannelBox}" Margin="0,12,0,0"
+                   Foreground="{StaticResource InkBrush}" FontWeight="Medium" Padding="0,0,0,8" />
+            <ComboBox x:Name="ChannelBox" Width="148" MinHeight="34" HorizontalAlignment="Left"
+                      AutomationProperties.Name="Update channel" />
             <TextBlock x:Name="StatusText" Visibility="Collapsed" Margin="0,8,0,0" TextWrapping="Wrap"
                        Foreground="{StaticResource MutedInkBrush}" AutomationProperties.LiveSetting="Polite" />
             <DockPanel Margin="0,16,0,0">

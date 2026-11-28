@@ -8,6 +8,8 @@ using SnipNation.Editor;
 using SnipNation.Gallery;
 using SnipNation.Imaging;
 using SnipNation.Windows;
+using Velopack;
+using Velopack.Locators;
 using Forms = System.Windows.Forms;
 
 namespace SnipNation;
@@ -21,13 +23,15 @@ public partial class App : Application
     private readonly Dictionary<CaptureFile, EditorWindow> _editors = [];
     private readonly HashSet<CaptureFile> _opening = [];
     private readonly CancellationTokenSource _stopping = new();
-    private readonly UpdateService _updates = new();
+    private UpdateService _updates = null!;
     private CaptureStore _store = null!;
     private GalleryWindow _gallery = null!;
     private GlobalHotkey _hotkey = null!;
     private Forms.NotifyIcon _tray = null!;
     private Forms.ToolStripMenuItem _printItem = null!;
     private Forms.ToolStripMenuItem _alternateItem = null!;
+    private Forms.ToolStripMenuItem _restartUpdateItem = null!;
+    private VelopackAsset? _readyUpdate;
     private Stream? _iconStream;
     private Task? _captureTask;
     private CaptureSession? _session;
@@ -37,7 +41,9 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
-        _store = new CaptureStore(UserSettings.LoadScreenshotFolder() ?? DefaultCaptureFolder);
+        var preferences = UserSettings.LoadPreferences();
+        _updates = new UpdateService(VelopackLocator.Current, preferences.UpdateChannel);
+        _store = new CaptureStore(preferences.ScreenshotFolder ?? DefaultCaptureFolder);
         _gallery = new GalleryWindow();
         _gallery.CaptureRequested += StartCapture;
         _gallery.EditRequested += capture => _ = EditAsync(capture);
@@ -51,7 +57,7 @@ public partial class App : Application
         if (_updates.IsInstalled)
         {
             var token = _stopping.Token;
-            _ = Task.Run(() => _updates.RunAsync(token), token);
+            _ = Task.Run(() => _updates.RunAsync(UpdateReady, token), token);
         }
     }
 
@@ -103,6 +109,9 @@ public partial class App : Application
         };
         menu.Items.Add(startup);
         menu.Items.Add(new Forms.ToolStripSeparator());
+        _restartUpdateItem = new Forms.ToolStripMenuItem("Restart to update", null,
+            async (_, _) => await ExitAsync(restartForUpdate: true)) { Available = false };
+        menu.Items.Add(_restartUpdateItem);
         menu.Items.Add("Exit", null, async (_, _) => await ExitAsync());
 
         _iconStream = GetResourceStream(new Uri("pack://application:,,,/Assets/SnipNation.ico")).Stream;
@@ -130,7 +139,7 @@ public partial class App : Application
         if (_exiting || _settingsOpen || _captureTask is { IsCompleted: false })
             return;
 
-        var settings = new SettingsWindow(_store.DirectoryPath, DefaultCaptureFolder);
+        var settings = new SettingsWindow(_store.DirectoryPath, DefaultCaptureFolder, _updates.Channel);
         _gallery.Hide();
         _settingsOpen = true;
         try
@@ -139,20 +148,49 @@ public partial class App : Application
                 return;
 
             var folder = settings.ScreenshotFolder;
-            if (!UserSettings.SaveScreenshotFolder(folder))
+            var channel = settings.SelectedChannel;
+            if (!UserSettings.SavePreferences(new AppPreferences(folder, channel)))
             {
-                ShowTrayStatus("Could not save the screenshot folder setting.");
+                ShowTrayStatus("Could not save the settings.");
                 return;
             }
 
-            _store = new CaptureStore(folder);
-            _gallery.ClearPreviews();
-            _ = LoadHistoryAsync();
+            if (folder != _store.DirectoryPath)
+            {
+                _store = new CaptureStore(folder);
+                _gallery.ClearPreviews();
+                _ = LoadHistoryAsync();
+            }
+
+            if (channel != _updates.Channel)
+            {
+                ClearReadyUpdate();
+                _updates.SelectChannel(channel);
+            }
         }
         finally
         {
             _settingsOpen = false;
         }
+    }
+
+    private void UpdateReady(UpdateChannel channel, VelopackAsset package)
+    {
+        _ = Dispatcher.InvokeAsync(() =>
+        {
+            if (_stopping.IsCancellationRequested || channel != _updates.Channel || _readyUpdate?.Version == package.Version)
+                return;
+
+            _readyUpdate = package;
+            _restartUpdateItem.Available = true;
+            ShowTrayStatus($"{channel} {package.Version} is ready. Choose Restart to update.");
+        });
+    }
+
+    private void ClearReadyUpdate()
+    {
+        _readyUpdate = null;
+        _restartUpdateItem.Available = false;
     }
 
     private void RegisterPreferredShortcut()
@@ -385,9 +423,26 @@ public partial class App : Application
         }
     }
 
-    private async Task ExitAsync()
+    private async Task<bool> ScheduleUpdateAsync()
     {
-        if (_exiting || _settingsOpen)
+        try
+        {
+            if (_readyUpdate is { } package && await _updates.ScheduleRestartAsync(package, _stopping.Token))
+                return true;
+        }
+        catch (Exception error) when (Images.IsFileError(error) || error is InvalidOperationException or Win32Exception)
+        {
+            Trace.TraceWarning("Restart to update: {0}", error.Message);
+        }
+        ClearReadyUpdate();
+        _updates.RequestCheck();
+        ShowTrayStatus("Could not restart to update.");
+        return false;
+    }
+
+    private async Task ExitAsync(bool restartForUpdate = false)
+    {
+        if (_exiting || _settingsOpen || (restartForUpdate && _readyUpdate is null))
             return;
 
         _exiting = true;
@@ -402,6 +457,11 @@ public partial class App : Application
                 _exiting = false;
                 return;
             }
+        }
+        if (restartForUpdate && !await ScheduleUpdateAsync())
+        {
+            _exiting = false;
+            return;
         }
         _gallery.CloseForExit();
         Shutdown();

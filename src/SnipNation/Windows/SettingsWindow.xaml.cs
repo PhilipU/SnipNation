@@ -12,16 +12,19 @@ public partial class SettingsWindow : Window
     private readonly string _defaultFolder;
     private bool _saving;
 
-    internal SettingsWindow(string screenshotFolder, string defaultFolder)
+    internal SettingsWindow(string screenshotFolder, string defaultFolder, UpdateChannel channel)
     {
         _defaultFolder = defaultFolder;
         ScreenshotFolder = screenshotFolder;
         InitializeComponent();
         FolderBox.Text = screenshotFolder;
         FolderBox.TextChanged += (_, _) => SetStatus(null);
+        ChannelBox.ItemsSource = Enum.GetValues<UpdateChannel>();
+        ChannelBox.SelectedItem = channel;
     }
 
     internal string ScreenshotFolder { get; private set; }
+    internal UpdateChannel SelectedChannel => (UpdateChannel)ChannelBox.SelectedItem;
 
     protected override void OnSourceInitialized(EventArgs e)
     {
@@ -54,6 +57,11 @@ public partial class SettingsWindow : Window
             return;
 
         var path = FolderBox.Text.Trim();
+        if (path == ScreenshotFolder)
+        {
+            DialogResult = true;
+            return;
+        }
         if (!Path.IsPathFullyQualified(path))
         {
             SetStatus("Enter a full folder path.");
