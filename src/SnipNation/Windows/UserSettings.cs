@@ -16,6 +16,13 @@ internal static class UserSettings
     private const string ScreenshotFolderName = "ScreenshotFolder";
     private const string PreferencesName = "Preferences";
 
+    private static readonly string DataDirectory = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SnipNationData");
+
+    internal static string DefaultCaptureFolder => Path.Combine(DataDirectory, "Captures");
+    internal static string PresetFolder => Path.Combine(DataDirectory, "AnnotationPresets");
+    internal static string CaptureFolder => LoadPreferences().ScreenshotFolder ?? DefaultCaptureFolder;
+
     internal static bool StartsAtLogon()
     {
         using var key = Registry.CurrentUser.OpenSubKey(RunKey);
@@ -79,6 +86,18 @@ internal static class UserSettings
 
     internal static bool SavePreferences(AppPreferences preferences) =>
         SaveValue(PreferencesName, JsonSerializer.Serialize(preferences));
+
+    internal static string PrepareCaptureFolder(string path)
+    {
+        if (!Path.IsPathFullyQualified(path))
+            throw new ArgumentException("Enter a full folder path.");
+
+        var folder = Path.TrimEndingDirectorySeparator(Directory.CreateDirectory(path).FullName);
+        var probePath = Path.Combine(folder, Path.GetRandomFileName());
+        using var probe = new FileStream(probePath, FileMode.CreateNew, FileAccess.Write, FileShare.None,
+            bufferSize: 1, FileOptions.DeleteOnClose);
+        return folder;
+    }
 
     private static string? FullPathOrNull(string? path) =>
         path is not null && Path.IsPathFullyQualified(path) ? path : null;

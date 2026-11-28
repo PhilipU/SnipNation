@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -10,6 +11,10 @@ public sealed record CaptureFile(string DirectoryPath)
     public string OriginalPath => Path.Combine(DirectoryPath, "original.png");
     public string AnnotationPath => Path.Combine(DirectoryPath, "annotations.json");
 }
+
+public sealed record SavedCaptureEdits(CaptureEdits Edits, string Revision);
+
+public sealed class CaptureEditConflictException() : IOException("Screenshot edits changed. Read the current revision and try again.");
 
 public sealed class CaptureStore(string root)
 {
@@ -42,67 +47,103 @@ public sealed class CaptureStore(string root)
         return capture;
     }
 
-    public IReadOnlyList<CaptureFile> Recent(int limit)
+    public CaptureFile? Find(string id)
+    {
+        if (!IsCaptureId(id))
+            return null;
+
+        var capture = new CaptureFile(Path.Combine(DirectoryPath, id));
+        return File.Exists(capture.OriginalPath) ? capture : null;
+    }
+
+    public IReadOnlyList<CaptureFile> Recent(int limit, string? before = null)
     {
         if (!Directory.Exists(DirectoryPath))
             return [];
 
         return Directory.EnumerateDirectories(DirectoryPath)
             .Select(path => new CaptureFile(path))
-            .Where(capture => IsCaptureDirectory(capture) && File.Exists(capture.OriginalPath))
+            .Where(capture => IsCaptureId(capture.Id) && (before is null || string.CompareOrdinal(capture.Id, before) < 0) &&
+                File.Exists(capture.OriginalPath))
             .OrderByDescending(capture => capture.Id, StringComparer.Ordinal)
             .Take(limit)
             .ToArray();
     }
 
-    private static bool IsCaptureDirectory(CaptureFile capture)
+    public static bool IsCaptureId(string id)
     {
-        var id = capture.Id.AsSpan();
-        var separator = id.IndexOf('_');
-        return separator > 0 && Guid.TryParseExact(id[(separator + 1)..], "N", out _) &&
-            DateTimeOffset.TryParseExact(id[..separator], TimestampFormat, CultureInfo.InvariantCulture,
+        var span = id.AsSpan();
+        var separator = span.IndexOf('_');
+        return separator > 0 && span.Length == separator + 33 &&
+            Guid.TryParseExact(span[(separator + 1)..], "N", out _) &&
+            DateTimeOffset.TryParseExact(span[..separator], TimestampFormat, CultureInfo.InvariantCulture,
                 DateTimeStyles.AssumeUniversal, out _);
     }
 
-    public static CaptureEdits LoadEdits(CaptureFile capture)
+    public static CaptureEdits LoadEdits(CaptureFile capture) => ReadEdits(capture).Edits;
+
+    public static SavedCaptureEdits ReadEdits(CaptureFile capture)
     {
         try
         {
             using var stream = File.Open(capture.AnnotationPath, FileMode.Open, FileAccess.Read,
                 FileShare.Read | FileShare.Delete);
+            var revision = Convert.ToHexString(SHA256.HashData(stream));
+            stream.Position = 0;
             using var document = JsonDocument.Parse(stream);
             var content = document.RootElement;
             var edits = content.ValueKind == JsonValueKind.Array
                 ? new CaptureEdits(content.Deserialize<Annotation[]>(JsonOptions)!)
                 : content.Deserialize<CaptureEdits>(JsonOptions);
-            if (edits?.Annotations is null || edits.Annotations.Any(annotation => !IsValid(annotation)) ||
+            if (edits?.Annotations is null || edits.Annotations.Any(annotation => !IsValidAnnotation(annotation)) ||
                 edits.Crop is { } crop && (crop.X < 0 || crop.Y < 0 || crop.IsEmpty))
                 throw new InvalidDataException("Invalid screenshot edits.");
-            return edits;
+            return new SavedCaptureEdits(edits, revision);
         }
         catch (FileNotFoundException)
         {
-            return new CaptureEdits([]);
+            return new SavedCaptureEdits(new CaptureEdits([]), "0");
         }
     }
 
-    public static void SaveEdits(CaptureFile capture, CaptureEdits edits) =>
-        WriteFile(capture.AnnotationPath, stream =>
+    public static string SaveEdits(CaptureFile capture, CaptureEdits edits, string? expectedRevision = null)
+    {
+        using var mutex = new Mutex(false, $"SnipNation.Capture.{capture.Id.ToUpperInvariant()}");
+        try
         {
-            if (edits.Crop is null)
-                JsonSerializer.Serialize(stream, edits.Annotations, JsonOptions);
-            else
-                JsonSerializer.Serialize(stream, edits, JsonOptions);
-        });
+            if (!mutex.WaitOne(TimeSpan.FromSeconds(5)))
+                throw new IOException("Another process is saving this screenshot.");
+        }
+        catch (AbandonedMutexException)
+        {
+            // This process owns the mutex after an interrupted writer.
+        }
 
-    public static void WriteFile(string path, Action<Stream> write)
+        try
+        {
+            if (expectedRevision is not null && ReadEdits(capture).Revision != expectedRevision)
+                throw new CaptureEditConflictException();
+
+            var bytes = edits.Crop is null
+                ? JsonSerializer.SerializeToUtf8Bytes(edits.Annotations, JsonOptions)
+                : JsonSerializer.SerializeToUtf8Bytes(edits, JsonOptions);
+            WriteFile(capture.AnnotationPath, stream => stream.Write(bytes));
+            return Convert.ToHexString(SHA256.HashData(bytes));
+        }
+        finally
+        {
+            mutex.ReleaseMutex();
+        }
+    }
+
+    public static void WriteFile(string path, Action<Stream> write, bool overwrite = true)
     {
         var tempPath = $"{path}.{Guid.NewGuid():N}.tmp";
         try
         {
             using (var stream = new FileStream(tempPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
                 write(stream);
-            File.Move(tempPath, path, overwrite: true);
+            File.Move(tempPath, path, overwrite);
         }
         finally
         {
@@ -111,7 +152,7 @@ public sealed class CaptureStore(string root)
         }
     }
 
-    private static bool IsValid(Annotation? annotation)
+    public static bool IsValidAnnotation(Annotation? annotation)
     {
         if (annotation is null || annotation.Points is null || annotation.Text is null ||
             !annotation.Style.IsValid || annotation.PresetIndex is < 0 or >= AnnotationPresetStore.SlotCount ||

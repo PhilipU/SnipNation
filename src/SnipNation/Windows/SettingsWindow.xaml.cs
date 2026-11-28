@@ -74,7 +74,7 @@ public partial class SettingsWindow : Window
         SetStatus(null);
         try
         {
-            ScreenshotFolder = await Task.Run(() => PrepareFolder(path));
+            ScreenshotFolder = await Task.Run(() => UserSettings.PrepareCaptureFolder(path));
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or ArgumentException or
                                      NotSupportedException or SecurityException)
@@ -89,15 +89,6 @@ public partial class SettingsWindow : Window
             IsEnabled = true;
         }
         DialogResult = true;
-    }
-
-    private static string PrepareFolder(string path)
-    {
-        var folder = Path.TrimEndingDirectorySeparator(Directory.CreateDirectory(path).FullName);
-        var probePath = Path.Combine(folder, Path.GetRandomFileName());
-        using var probe = new FileStream(probePath, FileMode.CreateNew, FileAccess.Write, FileShare.None,
-            bufferSize: 1, FileOptions.DeleteOnClose);
-        return folder;
     }
 
     private void SetStatus(string? message)

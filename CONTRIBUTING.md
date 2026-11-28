@@ -12,6 +12,8 @@ dotnet build SnipNation.slnx -c Release --no-restore -warnaserror
 dotnet test SnipNation.slnx -c Release --no-build --no-restore
 ```
 
+On Windows, run `./tools/Test-Mcp.ps1` after a Release build to verify the stdio server, capture, preview, editing, clipboard, and export. Run the test in an interactive desktop session.
+
 ## README screenshots
 
 GitHub Actions renders the capture, gallery, editor, and settings views on Windows 11. It also captures the gallery and editor on the Windows desktop with the taskbar visible. Download **snipnation-screenshots** from a pull request's **Build and test** run to review the current images. Successful builds of `main` publish those images to `readme-screenshots`.

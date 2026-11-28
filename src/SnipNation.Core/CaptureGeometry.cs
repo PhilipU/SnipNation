@@ -1,12 +1,14 @@
+using System.Text.Json.Serialization;
+
 namespace SnipNation.Core;
 
 public readonly record struct PixelPoint(int X, int Y);
 
 public readonly record struct PixelRect(int X, int Y, int Width, int Height)
 {
-    public int Right => X + Width;
-    public int Bottom => Y + Height;
-    public bool IsEmpty => Width <= 0 || Height <= 0;
+    [JsonIgnore] public int Right => X + Width;
+    [JsonIgnore] public int Bottom => Y + Height;
+    [JsonIgnore] public bool IsEmpty => Width <= 0 || Height <= 0;
 
     public static PixelRect FromEdges(int left, int top, int right, int bottom) =>
         new(left, top, Math.Max(0, right - left), Math.Max(0, bottom - top));

@@ -17,10 +17,14 @@
     <InternalsVisibleTo Include="SnipNation.Screenshots" />
     <ProjectReference Include="../SnipNation.Core/SnipNation.Core.csproj" />
     <PackageReference Include="Velopack" Version="1.2.161" />
+    <PackageReference Include="ModelContextProtocol.Core" Version="2.4.0" />
     <Resource Include="Assets/SnipNation.ico" />
     <Resource Include="Assets/EditorIcons.svg" />
     <Resource Include="Assets/Fonts/*.ttf" />
     <None Update="Assets/Fonts/OFL.txt" TargetPath="licenses/Inter/OFL.txt" CopyToPublishDirectory="PreserveNewest" />
+    <None Remove="Licenses/**/*" />
+    <None Include="Licenses/**/*" TargetPath="licenses/%(RecursiveDir)%(Filename)%(Extension)" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="../../MCP.md" Link="MCP.md" CopyToPublishDirectory="PreserveNewest" />
     <None Include="../../LICENSE" Link="LICENSE" CopyToPublishDirectory="PreserveNewest" />
     <None Include="../../THIRD-PARTY-NOTICES.md" Link="THIRD-PARTY-NOTICES.md" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
