@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using ModelContextProtocol.Protocol;
@@ -14,6 +15,7 @@ internal static class McpHost
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
+        TypeInfoResolver = new DefaultJsonTypeInfoResolver(),
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
         RespectRequiredConstructorParameters = true,
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: false) }
