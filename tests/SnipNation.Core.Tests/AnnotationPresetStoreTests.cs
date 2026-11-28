@@ -36,5 +36,20 @@ public sealed class AnnotationPresetStoreTests : IDisposable
         Assert.Null(reopened.Load(AnnotationKind.Arrow, 0));
     }
 
+    [Fact]
+    public void ATextPresetFromTheFirstReleaseCanBeOverwritten()
+    {
+        File.WriteAllText(Path.Combine(_root, "Text-3.json"), """
+            {"argb":4294967295,"size":24,"pattern":"Solid","arrowhead":"Filled","bold":true}
+            """);
+        var defaults = new AnnotationPresetStore(_root);
+        var legacy = Assert.IsType<AnnotationStyle>(defaults.Load(AnnotationKind.Text, 2));
+        Assert.Equal(new AnnotationStyle(0xFFFFFFFF, 24, Bold: true), legacy);
+
+        var replacement = legacy with { Font = AnnotationFont.Monospace, Outline = true };
+        defaults.Save(AnnotationKind.Text, 2, replacement);
+        Assert.Equal(replacement, new AnnotationPresetStore(_root).Load(AnnotationKind.Text, 2));
+    }
+
     public void Dispose() => Directory.Delete(_root, recursive: true);
 }

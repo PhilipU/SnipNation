@@ -59,9 +59,6 @@ public partial class ScreenshotApp : Application
         var firstPage = DocumentPage("Lorem ipsum");
         var secondPage = DocumentPage("Dolor sit amet");
         var thirdPage = DocumentPage("Consectetur adipiscing");
-        var green = Brand.Argb("LightAccent");
-        var lime = Brand.Argb("Accent");
-
         SaveExcerpt(store, firstPage, new PixelRect(48, 40, 665, 149));
         SaveExcerpt(store, secondPage, new PixelRect(48, 207, 665, 159));
         SaveExcerpt(store, thirdPage, new PixelRect(48, 105, 665, 166));
@@ -70,19 +67,20 @@ public partial class ScreenshotApp : Application
         var drawing = store.SaveCapture(stream => Images.SavePng(firstPage, stream));
         CaptureStore.SaveEdits(drawing, new CaptureEdits(
         [
-            new(AnnotationKind.Arrow, [new(718, 161), new(674, 136)], green, 5),
-            new(AnnotationKind.Line, [new(62, 244), new(290, 244)], green, 3),
-            new(AnnotationKind.Freehand,
+            presets.Get(AnnotationKind.Arrow, 2).CreateAnnotation(AnnotationKind.Arrow, [new(718, 161), new(674, 136)], 2),
+            presets.Get(AnnotationKind.Line, 1).CreateAnnotation(AnnotationKind.Line, [new(62, 244), new(290, 244)], 1),
+            presets.Get(AnnotationKind.Freehand, 0).CreateAnnotation(AnnotationKind.Freehand,
                 [new(51, 321), new(49, 312), new(62, 305), new(94, 301), new(144, 299),
                  new(194, 299), new(229, 302), new(243, 308), new(247, 316), new(237, 326),
-                 new(214, 331), new(169, 334), new(114, 333), new(76, 330), new(51, 321)], green, 3)
+                 new(214, 331), new(169, 334), new(114, 333), new(76, 330), new(51, 321)], 0)
         ]));
 
         var text = store.SaveCapture(stream => Images.SavePng(secondPage, stream));
         var textEdits = new CaptureEdits(
         [
-            new(AnnotationKind.Highlight, [new(61, 122), new(305, 146)], (lime & 0x00FFFFFF) | 0x66000000, 4),
-            new(AnnotationKind.Text, [new(62, 384)], green, 23, "Summarize this section.")
+            presets.Get(AnnotationKind.Highlight, 3)
+                .CreateAnnotation(AnnotationKind.Highlight, [new(61, 122), new(305, 146)], 3),
+            presets.Get(AnnotationKind.Text, 4).CreateAnnotation(AnnotationKind.Text, [new(62, 382)], 4, "Summarize this section.")
         ]).CropTo(new PixelRect(18, 16, 724, 416));
         CaptureStore.SaveEdits(text, textEdits);
         VerifyJpeg(text);
@@ -141,10 +139,15 @@ public partial class ScreenshotApp : Application
                 buttons.Children.Cast<Button>().Any(button => button.Content is not Image { Source: not null }))
                 throw new InvalidOperationException($"The {kind} tool did not show six preset previews.");
 
-            if (kind == AnnotationKind.Arrow)
-                SaveView(editor, output, "presets-arrow.png");
-            else if (kind == AnnotationKind.Highlight)
-                SaveView(editor, output, "presets-highlight.png");
+            var file = kind switch
+            {
+                AnnotationKind.Arrow => "presets-arrow.png",
+                AnnotationKind.Highlight => "presets-highlight.png",
+                AnnotationKind.Text => "presets-text.png",
+                _ => null
+            };
+            if (file is not null)
+                SaveView(editor, output, file);
 
             ((Button)buttons.Children[1]).RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
             if (panel.IsVisible)

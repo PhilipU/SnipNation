@@ -15,11 +15,12 @@ public sealed class CaptureStoreTests : IDisposable
         Annotation[] annotations =
         [
             new(AnnotationKind.Arrow, [new(0, 1.5), new(42, 18)], 0xFFC6FA78, 4,
-                Pattern: StrokePattern.Dashed, Arrowhead: ArrowheadStyle.Open, PresetIndex: 5),
+                Pattern: StrokePattern.Dashed, Arrowhead: ArrowheadStyle.Curved, PresetIndex: 1),
             new(AnnotationKind.Line, [new(1, 2), new(3, 4)], 0xFF2057BA, 4),
             new(AnnotationKind.Freehand, [new(0, 0), new(5, 10), new(8, 12)], 0xFFDC2633, 4),
             new(AnnotationKind.Highlight, [new(120, 40), new(230, 70)], 0x66FFD43B, 4),
-            new(AnnotationKind.Text, [new(30, 90)], 0xFFFFFFFF, 24, "Open\nSave…", Bold: true, PresetIndex: 0)
+            new(AnnotationKind.Text, [new(30, 90)], 0xFFFFFFFF, 24, "Open\nSave…",
+                Bold: true, PresetIndex: 5, Font: AnnotationFont.Monospace, Outline: true)
         ];
 
         Assert.Empty(CaptureStore.LoadEdits(capture).Annotations);

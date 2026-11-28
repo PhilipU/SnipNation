@@ -21,7 +21,8 @@ public sealed class CaptureStore(string root)
         {
             new JsonStringEnumConverter<AnnotationKind>(),
             new JsonStringEnumConverter<StrokePattern>(),
-            new JsonStringEnumConverter<ArrowheadStyle>()
+            new JsonStringEnumConverter<ArrowheadStyle>(),
+            new JsonStringEnumConverter<AnnotationFont>()
         }
     };
 

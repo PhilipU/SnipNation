@@ -50,8 +50,10 @@ If **Print Screen** is already in use, right-click the tray icon and choose **Ct
 
 **Tool presets**
 
-![Arrow tool with six previews showing different arrowheads, colors, and stroke styles](https://raw.githubusercontent.com/PhilipU/SnipNation/readme-screenshots/presets-arrow.png)
+![Arrow tool with six colors and shapes, including a curved arrow and a tapered arrow](https://raw.githubusercontent.com/PhilipU/SnipNation/readme-screenshots/presets-arrow.png)
 
-![Highlight tool with six previews showing different colors and opacities](https://raw.githubusercontent.com/PhilipU/SnipNation/readme-screenshots/presets-highlight.png)
+![Highlight tool with six solid color swatches](https://raw.githubusercontent.com/PhilipU/SnipNation/readme-screenshots/presets-highlight.png)
+
+![Text tool with sans serif, serif, and monospace samples, each with a plain and outlined version](https://raw.githubusercontent.com/PhilipU/SnipNation/readme-screenshots/presets-text.png)
 
 [Contributing](CONTRIBUTING.md) · [Security policy](SECURITY.md)
