@@ -10,6 +10,7 @@ internal static class UserSettings
     private const string SettingsKey = @"Software\SnipNation";
     private const string Name = "SnipNation";
     private const string ShortcutName = "CaptureShortcut";
+    private const string ScreenshotFolderName = "ScreenshotFolder";
 
     internal static bool StartsAtLogon()
     {
@@ -49,17 +50,35 @@ internal static class UserSettings
             : CaptureShortcut.Print;
     }
 
-    internal static bool SaveShortcut(CaptureShortcut shortcut)
+    internal static bool SaveShortcut(CaptureShortcut shortcut) => SaveValue(ShortcutName, (int)shortcut);
+
+    internal static string? LoadScreenshotFolder()
+    {
+        try
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(SettingsKey);
+            return key?.GetValue(ScreenshotFolderName) is string path && Path.IsPathFullyQualified(path) ? path : null;
+        }
+        catch (Exception error) when (error is UnauthorizedAccessException or SecurityException or IOException)
+        {
+            Trace.TraceWarning("Read screenshot folder: {0}", error.Message);
+            return null;
+        }
+    }
+
+    internal static bool SaveScreenshotFolder(string folder) => SaveValue(ScreenshotFolderName, folder);
+
+    private static bool SaveValue(string name, object value)
     {
         try
         {
             using var key = Registry.CurrentUser.CreateSubKey(SettingsKey);
-            key.SetValue(ShortcutName, (int)shortcut);
+            key.SetValue(name, value);
             return true;
         }
         catch (Exception error) when (error is UnauthorizedAccessException or SecurityException or IOException)
         {
-            Trace.TraceWarning("Keyboard shortcut: {0}", error.Message);
+            Trace.TraceWarning("Save setting {0}: {1}", name, error.Message);
             return false;
         }
     }

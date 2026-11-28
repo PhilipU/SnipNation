@@ -13,6 +13,8 @@ public sealed record CaptureFile(string DirectoryPath)
 
 public sealed class CaptureStore(string root)
 {
+    private const string TimestampFormat = "yyyyMMdd'T'HHmmssfff'Z'";
+
     internal static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -29,10 +31,12 @@ public sealed class CaptureStore(string root)
         }
     };
 
+    public string DirectoryPath { get; } = root;
+
     public CaptureFile SaveCapture(Action<Stream> writePng)
     {
-        var timestamp = DateTimeOffset.UtcNow.ToString("yyyyMMdd'T'HHmmssfff'Z'", CultureInfo.InvariantCulture);
-        var directory = Directory.CreateDirectory(Path.Combine(root, $"{timestamp}_{Guid.NewGuid():N}"));
+        var timestamp = DateTimeOffset.UtcNow.ToString(TimestampFormat, CultureInfo.InvariantCulture);
+        var directory = Directory.CreateDirectory(Path.Combine(DirectoryPath, $"{timestamp}_{Guid.NewGuid():N}"));
         var capture = new CaptureFile(directory.FullName);
         WriteFile(capture.OriginalPath, writePng);
         return capture;
@@ -40,15 +44,24 @@ public sealed class CaptureStore(string root)
 
     public IReadOnlyList<CaptureFile> Recent(int limit)
     {
-        if (!Directory.Exists(root))
+        if (!Directory.Exists(DirectoryPath))
             return [];
 
-        return Directory.EnumerateDirectories(root)
+        return Directory.EnumerateDirectories(DirectoryPath)
             .Select(path => new CaptureFile(path))
-            .Where(capture => File.Exists(capture.OriginalPath))
+            .Where(capture => IsCaptureDirectory(capture) && File.Exists(capture.OriginalPath))
             .OrderByDescending(capture => capture.Id, StringComparer.Ordinal)
             .Take(limit)
             .ToArray();
+    }
+
+    private static bool IsCaptureDirectory(CaptureFile capture)
+    {
+        var id = capture.Id.AsSpan();
+        var separator = id.IndexOf('_');
+        return separator > 0 && Guid.TryParseExact(id[(separator + 1)..], "N", out _) &&
+            DateTimeOffset.TryParseExact(id[..separator], TimestampFormat, CultureInfo.InvariantCulture,
+                DateTimeStyles.AssumeUniversal, out _);
     }
 
     public static CaptureEdits LoadEdits(CaptureFile capture)

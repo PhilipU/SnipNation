@@ -108,12 +108,20 @@ public partial class ScreenshotApp : Application
         }
         gallery.CloseForExit();
 
+        var settings = new SettingsWindow(@"C:\Users\Alex\Pictures\SnipNation",
+            @"C:\Users\Alex\AppData\Local\SnipNationData\Captures");
+        ShowForScreenshot(settings);
+        SaveView(settings, output, "settings.png");
+        settings.Close();
+
         await SaveEditor(drawing, presets, AnnotationKind.Freehand, output, "editor-drawing.png", desktop);
         await SaveEditor(text, presets, AnnotationKind.Text, output, "editor-text.png", desktop: false);
         SavePresetPickers(drawing, presets, output, Enum.GetValues<AnnotationKind>()
             .Where(kind => kind is not (AnnotationKind.Frame or AnnotationKind.Number)));
         SavePresetPickers(guides, presets, output, [AnnotationKind.Frame, AnnotationKind.Number]);
         SaveCaptureOverlay(firstPage, output);
+        if (Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true")
+            await VerifyEditorApply(text, presets);
     }
 
     private static async Task SaveEditor(CaptureFile capture, ToolPresets presets, AnnotationKind tool, string output,
@@ -134,6 +142,34 @@ public partial class ScreenshotApp : Application
             await SaveDesktop(editor, output, "desktop-editor.png");
         }
         editor.Close();
+    }
+
+    private static async Task VerifyEditorApply(CaptureFile capture, ToolPresets presets)
+    {
+        var edits = CaptureStore.LoadEdits(capture);
+        var original = Images.Read(capture.OriginalPath);
+        var expected = Images.Compose(Images.Crop(original, edits.Crop), edits.Annotations);
+        var editor = new EditorWindow(capture, original, edits, presets);
+        var closed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        editor.Closed += (_, _) => closed.SetResult();
+        ShowForScreenshot(editor);
+        ((Button)editor.FindName("ApplyEditsButton")).RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+        await closed.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        var copied = Clipboard.GetImage();
+        var highlightPixel = new Int32Rect(50, 115, 1, 1);
+        if (copied is null || copied.PixelWidth != expected.PixelWidth || copied.PixelHeight != expected.PixelHeight ||
+            !ReadPixel(copied, highlightPixel).SequenceEqual(ReadPixel(expected, highlightPixel)))
+            throw new InvalidOperationException("Apply did not copy the cropped and annotated image.");
+
+        Console.WriteLine("Verified that Apply copies the edited image and closes the editor.");
+    }
+
+    private static byte[] ReadPixel(BitmapSource image, Int32Rect pixel)
+    {
+        var colors = new byte[4];
+        new FormatConvertedBitmap(image, PixelFormats.Bgra32, null, 0).CopyPixels(pixel, colors, 4, 0);
+        return colors;
     }
 
     private static void SavePresetPickers(CaptureFile capture, ToolPresets presets, string output,

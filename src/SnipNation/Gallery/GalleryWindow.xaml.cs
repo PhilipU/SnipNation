@@ -49,6 +49,12 @@ public partial class GalleryWindow : Window
         Close();
     }
 
+    internal void ClearPreviews()
+    {
+        _items.Clear();
+        ShowStatus(null);
+    }
+
     internal void AddOrUpdate(CaptureFile capture, ImageSource? preview, bool replace = true)
     {
         var item = new GalleryItem(capture, preview);

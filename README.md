@@ -23,9 +23,11 @@ Get the Windows installer from [Releases](https://github.com/PhilipU/SnipNation/
 3. Paste the screenshot with **Ctrl+V**, or double-click it in the tray gallery to edit it. Select an annotation tool on the left and choose one of its six presets.
 4. Right-click an annotation and choose **Settings** to change its style. Select **Save as default for this preset** to replace the preset for future annotations.
 5. To crop, choose **Crop image** at the top, drag over the area to keep, and press **Enter**.
-6. Press **Ctrl+S** to save your edits. Use **Ctrl+C** to copy the edited image or **Export** to save it as PNG or JPEG.
+6. Press **Ctrl+S** to save your edits or **Ctrl+C** to copy the edited image. Choose **Apply** (the save icon with a check mark) to save, copy, and close. Use **Export** to save a PNG or JPEG.
 
 Drag with **Frame** to outline an area. With **Numbering**, click to place the next number or drag from the marker to its target. Use **Select** to adjust either end of a connection.
+
+To change the screenshot folder, right-click the tray icon and choose **Settings**. The gallery shows the screenshots in the chosen folder.
 
 If **Print Screen** is already in use, right-click the tray icon and choose **Ctrl+Shift+Print Screen** under **Keyboard shortcuts**.
 
@@ -41,6 +43,8 @@ If **Print Screen** is already in use, right-click the tray icon and choose **Ct
   <img src="https://raw.githubusercontent.com/PhilipU/SnipNation/readme-screenshots/capture.png" width="500" alt="SnipNation outlining a window for capture">
   <img src="https://raw.githubusercontent.com/PhilipU/SnipNation/readme-screenshots/gallery.png" width="280" alt="SnipNation tray gallery with recent screenshots">
 </p>
+
+![SnipNation settings with the screenshot folder field and Browse button](https://raw.githubusercontent.com/PhilipU/SnipNation/readme-screenshots/settings.png)
 
 **Arrows, lines, and freehand**
 

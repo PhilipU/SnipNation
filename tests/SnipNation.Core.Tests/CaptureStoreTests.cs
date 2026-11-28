@@ -108,5 +108,20 @@ public sealed class CaptureStoreTests : IDisposable
         Assert.Empty(store.Recent(36));
     }
 
+    [Fact]
+    public void AChosenFolderListsOnlyItsSnipNationCaptures()
+    {
+        var defaultFolder = Path.Combine(_root, "Default");
+        var chosenFolder = Path.Combine(_root, "Screenshots for guides");
+        var previous = new CaptureStore(defaultFolder).SaveCapture(stream => stream.Write("previous"u8));
+        var current = new CaptureStore(chosenFolder).SaveCapture(stream => stream.Write("current"u8));
+        var unrelated = Directory.CreateDirectory(Path.Combine(chosenFolder, "Reference images"));
+        File.WriteAllText(Path.Combine(unrelated.FullName, "original.png"), "reference");
+
+        Assert.Equal(chosenFolder, Path.GetDirectoryName(current.DirectoryPath));
+        Assert.Equal(current, Assert.Single(new CaptureStore(chosenFolder).Recent(36)));
+        Assert.Equal(previous, Assert.Single(new CaptureStore(defaultFolder).Recent(36)));
+    }
+
     public void Dispose() => Directory.Delete(_root, recursive: true);
 }
